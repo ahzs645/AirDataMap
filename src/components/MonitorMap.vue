@@ -1,21 +1,33 @@
 <template>
-  <div class="map-container">
-    <div ref="mapRef" class="map-view"></div>
-    <div class="map-overlay">
-      <span><strong>Region:</strong> {{ summary.regionLabel }}</span>
-      <span class="radius-display">
-        <strong>Radius:</strong> {{ radiusKm.toFixed(0) }} km
+  <div class="relative h-full w-full">
+    <div ref="mapRef" class="h-full w-full"></div>
+    <div
+      class="pointer-events-none absolute left-4 top-4 flex max-w-md flex-col gap-1 rounded-xl border border-border bg-background/90 px-4 py-3 text-xs font-medium text-muted-foreground shadow-lg backdrop-blur"
+    >
+      <span v-if="summary.regionLabel" class="text-sm font-semibold text-foreground">
+        {{ summary.regionLabel }}
       </span>
-      <span v-if="summary.totals.points">Points: {{ summary.totals.points }}</span>
-      <span v-if="summary.totals.satellite">Satellite: {{ summary.totals.satellite }}</span>
-      <span v-if="summary.totals.grids">Hex Grids: {{ summary.totals.grids }}</span>
+      <span class="text-xs">
+        Radius: <span class="font-semibold text-foreground">{{ radiusKm.toFixed(0) }} km</span>
+      </span>
+      <div class="flex flex-wrap gap-3">
+        <span v-if="summary.totals.points">Points: {{ summary.totals.points }}</span>
+        <span v-if="summary.totals.satellite">Satellite: {{ summary.totals.satellite }}</span>
+        <span v-if="summary.totals.grids">Hex Grids: {{ summary.totals.grids }}</span>
+      </div>
     </div>
-    <div class="map-style-switcher">
+    <div class="absolute right-4 top-4 flex flex-col overflow-hidden rounded-lg border bg-background text-sm shadow-lg">
       <button
         v-for="style in mapStyles"
         :key="style.id"
-        :class="{ active: currentStyle === style.id }"
+        :class="cn(
+          'px-4 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          currentStyle === style.id
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+            : 'text-foreground'
+        )"
         @click="switchMapStyle(style.id)"
+        type="button"
       >
         {{ style.name }}
       </button>
@@ -29,6 +41,7 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { cellToBoundary } from 'h3-js'
 import * as turf from '@turf/turf'
+import { cn } from '../lib/utils'
 
 const props = defineProps({
   center: {
@@ -110,7 +123,6 @@ function buildPopupContent(feature) {
 function updateCircle() {
   if (!map) return
 
-  const radiusMeters = props.radiusKm * 1000
   const circleFeature = turf.circle([props.center.lon, props.center.lat], props.radiusKm, {
     steps: 64,
     units: 'kilometers'
@@ -472,43 +484,3 @@ watch(
   { deep: true }
 )
 </script>
-
-<style scoped>
-.map-style-switcher {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  z-index: 1;
-}
-
-.map-style-switcher button {
-  padding: 0.5rem 1rem;
-  border: none;
-  background: white;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
-  transition: all 0.2s;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.map-style-switcher button:last-child {
-  border-bottom: none;
-}
-
-.map-style-switcher button:hover {
-  background: #f3f4f6;
-}
-
-.map-style-switcher button.active {
-  background: #2563eb;
-  color: white;
-}
-</style>
