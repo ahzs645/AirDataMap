@@ -1,0 +1,45 @@
+[
+  {
+    "id": "PA-12345",
+    "name": "PurpleAir Station 12345",
+    "type": "point",
+    "network": "PurpleAir",
+    "parameters": [
+      "PM2.5"
+    ],
+    "status": "active",
+    "latitude": 40.7128,
+    "longitude": -74.006,
+    "started": "2021-04-15",
+    "updated": "2024-02-12"
+  },
+  {
+    "id": "EPA-FEM-001",
+    "name": "EPA FEM - Queens College",
+    "type": "point",
+    "network": "EPA FEM",
+    "parameters": [
+      "PM2.5",
+      "PM10"
+    ],
+    "status": "active",
+    "latitude": 40.7336,
+    "longitude": -73.8258,
+    "started": "2015-01-01",
+    "updated": "2023-11-20"
+  },
+  {
+    "id": "CSN-0102",
+    "name": "Speciation Trends Network - Bronx",
+    "type": "point",
+    "network": "EPA CSN",
+    "parameters": [
+      "Speciated PM2.5"
+    ],
+    "status": "historical",
+    "latitude": 40.8429,
+    "longitude": -73.8655,
+    "started": "2003-06-01",
+    "ended": "2019-08-01"
+  }
+]

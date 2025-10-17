@@ -1,0 +1,29 @@
+[
+  {
+    "id": "PA-33321",
+    "name": "PurpleAir Station 33321",
+    "type": "point",
+    "network": "PurpleAir",
+    "parameters": [
+      "PM2.5"
+    ],
+    "status": "active",
+    "latitude": 34.0522,
+    "longitude": -118.2437,
+    "started": "2020-09-14"
+  },
+  {
+    "id": "CARB-LA-07",
+    "name": "CARB Speciation Network",
+    "type": "point",
+    "network": "CARB",
+    "parameters": [
+      "Speciated PM2.5",
+      "Carbonyls"
+    ],
+    "status": "active",
+    "latitude": 34.0522,
+    "longitude": -118.2537,
+    "started": "2016-02-01"
+  }
+]

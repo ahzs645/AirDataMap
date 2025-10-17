@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2025-10-17T16:15:06.984Z",
+  "regions": [
+    "northeast",
+    "southeast",
+    "midwest",
+    "west",
+    "alaska"
+  ],
+  "totals": {
+    "northeast": 3,
+    "southeast": 2,
+    "midwest": 2,
+    "west": 2,
+    "alaska": 1
+  },
+  "satelliteProducts": [
+    "MODIS-AOD-CONUS",
+    "GOES-16-AI"
+  ],
+  "hexProducts": [
+    "TROPOMI-NO2-NA",
+    "GEOS-CF-GLOBAL"
+  ]
+}

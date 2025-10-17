@@ -1,0 +1,16 @@
+[
+  {
+    "id": "AQS-02-090-0032",
+    "name": "Anchorage Gateway",
+    "type": "point",
+    "network": "EPA AQS",
+    "parameters": [
+      "PM2.5",
+      "PM10"
+    ],
+    "status": "active",
+    "latitude": 61.2181,
+    "longitude": -149.9003,
+    "started": "2018-05-10"
+  }
+]

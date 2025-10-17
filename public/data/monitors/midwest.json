@@ -1,0 +1,31 @@
+[
+  {
+    "id": "PA-99881",
+    "name": "PurpleAir Station 99881",
+    "type": "point",
+    "network": "PurpleAir",
+    "parameters": [
+      "PM2.5"
+    ],
+    "status": "active",
+    "latitude": 41.8781,
+    "longitude": -87.6298,
+    "started": "2023-08-20"
+  },
+  {
+    "id": "NCore-CH-01",
+    "name": "NCore Chicago Loop",
+    "type": "point",
+    "network": "EPA NCore",
+    "parameters": [
+      "Ozone",
+      "SO2",
+      "NO2",
+      "CO"
+    ],
+    "status": "active",
+    "latitude": 41.88,
+    "longitude": -87.63,
+    "started": "2010-01-01"
+  }
+]
