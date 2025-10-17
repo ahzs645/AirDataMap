@@ -10,8 +10,6 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { cellToBoundary } from 'h3-js'
 import * as turf from '@turf/turf'
-import { cn } from '../lib/utils'
-
 const props = defineProps({
   center: {
     type: Object,
@@ -37,9 +35,13 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  currentStyle: {
-    type: String,
-    default: 'osm-bright'
+  centerSelectionEnabled: {
+    type: Boolean,
+    default: false
+  },
+  isDarkMode: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -47,26 +49,28 @@ const emit = defineEmits(['update:center'])
 
 const mapRef = ref(null)
 let map = null
+let pendingStyleRefresh = null
 
 // Free vector map styles - no API keys needed!
+const BASE_STYLE_ID = 'osm-bright'
 const mapStyles = [
   {
-    id: 'osm-bright',
-    name: 'Street',
-    url: 'https://tiles.openfreemap.org/styles/bright'
-  },
-  {
-    id: 'osm-liberty',
-    name: 'Classic',
-    url: 'https://tiles.openfreemap.org/styles/liberty'
-  },
-  {
-    id: 'satellite',
-    name: 'Satellite',
-    // Raster satellite overlay on vector base
-    url: 'https://tiles.openfreemap.org/styles/bright' // We'll add satellite layer on top
+    id: BASE_STYLE_ID,
+    lightUrl: 'https://tiles.openfreemap.org/styles/bright',
+    darkUrl: 'https://tiles.openfreemap.org/styles/dark'
   }
 ]
+
+function getStyleUrl(styleId = BASE_STYLE_ID) {
+  const style = mapStyles.find(s => s.id === styleId) ?? mapStyles[0]
+  if (!style) return 'https://tiles.openfreemap.org/styles/bright'
+  return props.isDarkMode ? style.darkUrl : style.lightUrl
+}
+
+function setBaseCursor() {
+  if (!map) return
+  map.getCanvas().style.cursor = props.centerSelectionEnabled ? 'crosshair' : ''
+}
 
 function buildPopupContent(feature) {
   const props = feature.properties || feature
@@ -141,6 +145,8 @@ function updateCircle() {
 function updatePoints() {
   if (!map || !map.isStyleLoaded()) return
 
+  console.log('updatePoints called with', props.points.length, 'points')
+
   const features = props.points.map(point => ({
     type: 'Feature',
     geometry: {
@@ -155,9 +161,14 @@ function updatePoints() {
     features
   }
 
-  // Remove existing layer and source if they exist
+  console.log('GeoJSON features:', features.length)
+
+  // Remove existing layers and source if they exist
   if (map.getLayer('points-layer')) {
     map.removeLayer('points-layer')
+  }
+  if (map.getLayer('points-glow')) {
+    map.removeLayer('points-glow')
   }
   if (map.getSource('points')) {
     map.removeSource('points')
@@ -169,12 +180,34 @@ function updatePoints() {
     data: geojson
   })
 
+  // Add glow layer first (behind the main points)
+  map.addLayer({
+    id: 'points-glow',
+    type: 'circle',
+    source: 'points',
+    paint: {
+      'circle-radius': 12,
+      'circle-color': [
+        'match',
+        ['get', 'network'],
+        'PA', '#a855f7',
+        'FEM', '#22c55e',
+        'EGG', '#3b82f6',
+        'SPARTAN', '#f59e0b',
+        '#9ca3af'
+      ],
+      'circle-opacity': 0.3,
+      'circle-blur': 1
+    }
+  })
+
+  // Main points layer
   map.addLayer({
     id: 'points-layer',
     type: 'circle',
     source: 'points',
     paint: {
-      'circle-radius': 8,
+      'circle-radius': 7,
       // Use data-driven styling based on network type
       'circle-color': [
         'match',
@@ -185,17 +218,9 @@ function updatePoints() {
         'SPARTAN', '#f59e0b', // Amber/Orange for SPARTAN
         '#9ca3af'             // Gray fallback
       ],
-      'circle-stroke-color': [
-        'match',
-        ['get', 'network'],
-        'PA', '#7c3aed',      // Darker purple
-        'FEM', '#16a34a',     // Darker green
-        'EGG', '#2563eb',     // Darker blue
-        'SPARTAN', '#d97706', // Darker amber
-        '#6b7280'             // Gray fallback
-      ],
-      'circle-stroke-width': 1.5,
-      'circle-opacity': 0.9
+      'circle-stroke-color': '#ffffff',  // White stroke for contrast in both modes
+      'circle-stroke-width': 2,
+      'circle-opacity': 1
     }
   })
 
@@ -215,7 +240,7 @@ function updatePoints() {
   })
 
   map.on('mouseleave', 'points-layer', () => {
-    map.getCanvas().style.cursor = ''
+    setBaseCursor()
   })
 }
 
@@ -284,7 +309,7 @@ function updateSatellite() {
   })
 
   map.on('mouseleave', 'satellite-layer', () => {
-    map.getCanvas().style.cursor = ''
+    setBaseCursor()
   })
 }
 
@@ -377,12 +402,31 @@ function updateHex() {
   })
 
   map.on('mouseleave', 'hex-grids-layer', () => {
-    map.getCanvas().style.cursor = ''
+    setBaseCursor()
   })
 }
 
 function updateAllLayers() {
-  if (!map || !map.isStyleLoaded()) return
+  if (!map) return
+
+  if (!map.isStyleLoaded()) {
+    if (!pendingStyleRefresh) {
+      pendingStyleRefresh = () => {
+        if (!map || !map.isStyleLoaded()) return
+        map.off('styledata', pendingStyleRefresh)
+        pendingStyleRefresh = null
+        updateAllLayers()
+      }
+      map.on('styledata', pendingStyleRefresh)
+    }
+    return
+  }
+
+  if (pendingStyleRefresh) {
+    map.off('styledata', pendingStyleRefresh)
+    pendingStyleRefresh = null
+  }
+
   updateCircle()
   updatePoints()
   updateSatellite()
@@ -398,11 +442,8 @@ function zoomToPoint(lat, lon) {
   })
 }
 
-function switchMapStyle(styleId) {
+function switchMapStyle(styleId = BASE_STYLE_ID) {
   if (!map || !styleId) return
-
-  const style = mapStyles.find(s => s.id === styleId)
-  if (!style) return
 
   const currentView = {
     center: map.getCenter(),
@@ -411,7 +452,9 @@ function switchMapStyle(styleId) {
     pitch: map.getPitch()
   }
 
-  map.setStyle(style.url)
+  const styleUrl = getStyleUrl(styleId)
+  map.setStyle(styleUrl)
+
   map.once('style.load', () => {
     map.jumpTo({
       center: [currentView.center.lng, currentView.center.lat],
@@ -420,30 +463,8 @@ function switchMapStyle(styleId) {
       pitch: currentView.pitch
     })
 
-    if (styleId === 'satellite') {
-      // Add satellite imagery layer
-      map.addSource('satellite-tiles', {
-        type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-        tileSize: 256,
-        attribution: '© Esri'
-      })
-
-      // Insert satellite layer below labels
-      const layers = map.getStyle().layers
-      const firstSymbolId = layers.find(layer => layer.type === 'symbol')?.id
-
-      map.addLayer({
-        id: 'satellite-imagery',
-        type: 'raster',
-        source: 'satellite-tiles',
-        paint: {
-          'raster-opacity': 0.9
-        }
-      }, firstSymbolId)
-    }
-
     updateAllLayers()
+    setBaseCursor()
   })
 }
 
@@ -454,16 +475,19 @@ defineExpose({
 onMounted(() => {
   map = new maplibregl.Map({
     container: mapRef.value,
-    style: mapStyles[0].url,
+    style: getStyleUrl(),
     center: [props.center.lon, props.center.lat],
     zoom: 10
   })
 
   // Add navigation controls
   map.addControl(new maplibregl.NavigationControl(), 'top-right')
+  setBaseCursor()
 
   // Handle map clicks to update center
   map.on('click', (e) => {
+    if (!props.centerSelectionEnabled) return
+
     // Don't emit if clicking on a feature
     const features = map.queryRenderedFeatures(e.point, {
       layers: ['points-layer', 'satellite-layer', 'hex-grids-layer']
@@ -476,13 +500,18 @@ onMounted(() => {
 
   // Wait for style to load before adding layers
   map.on('load', () => {
+    setBaseCursor()
     updateAllLayers()
   })
 })
 
 onBeforeUnmount(() => {
+  if (map && pendingStyleRefresh) {
+    map.off('styledata', pendingStyleRefresh)
+  }
   map?.remove()
   map = null
+  pendingStyleRefresh = null
 })
 
 watch(
@@ -510,9 +539,17 @@ watch(
 )
 
 watch(
-  () => props.currentStyle,
-  (newStyle) => {
-    switchMapStyle(newStyle)
+  () => props.centerSelectionEnabled,
+  () => {
+    setBaseCursor()
+  }
+)
+
+watch(
+  () => props.isDarkMode,
+  () => {
+    // Re-apply the current style with the new dark mode setting
+    switchMapStyle()
   }
 )
 </script>

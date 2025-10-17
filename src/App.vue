@@ -11,22 +11,6 @@
             Monitoring results for your area
           </p>
         </div>
-        <div class="hidden items-center gap-1 rounded-md border bg-muted/50 p-1 lg:flex">
-          <button
-            v-for="style in mapStyles"
-            :key="style.id"
-            :class="cn(
-              'rounded px-3 py-1 text-xs font-medium transition-colors',
-              currentMapStyle === style.id
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )"
-            @click="currentMapStyle = style.id"
-            type="button"
-          >
-            {{ style.name }}
-          </button>
-        </div>
       </div>
       <div class="flex items-center gap-4">
         <div class="hidden items-center gap-3 text-xs text-muted-foreground lg:flex">
@@ -76,6 +60,32 @@
               <path d="m6.34 17.66-1.41 1.41"></path>
               <path d="m19.07 4.93-1.41 1.41"></path>
             </svg>
+          </Button>
+          <Button
+            :aria-pressed="centerSelectionActive"
+            :variant="centerSelectionActive ? 'default' : 'outline'"
+            size="sm"
+            @click="toggleCenterSelection"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="mr-2 h-4 w-4"
+            >
+              <circle cx="12" cy="12" r="2"></circle>
+              <path d="M12 5v2"></path>
+              <path d="M12 17v2"></path>
+              <path d="M5 12h2"></path>
+              <path d="M17 12h2"></path>
+            </svg>
+            {{ centerSelectionActive ? 'Click map' : 'Move radius' }}
           </Button>
           <Button @click="showDialog = true" size="sm">
             <svg
@@ -434,8 +444,9 @@
           :satellite-products="visibleSatelliteProducts"
           :hex-products="visibleHexProducts"
           :summary="summary"
-          :current-style="currentMapStyle"
-          @update:center="updateCenter"
+          :center-selection-enabled="centerSelectionActive"
+          :is-dark-mode="isDark"
+          @update:center="handleMapCenterUpdate"
         />
       </main>
     </div>
@@ -557,17 +568,8 @@ import Separator from './components/ui/separator/Separator.vue'
 import Dialog from './components/ui/dialog/Dialog.vue'
 import { useMonitorData } from './composables/useMonitorData'
 import { useDarkMode } from './composables/useDarkMode'
-import { cn } from './lib/utils'
 
 const { isDark, toggleDarkMode } = useDarkMode()
-
-// Map styles
-const mapStyles = [
-  { id: 'osm-bright', name: 'Street' },
-  { id: 'osm-liberty', name: 'Classic' },
-  { id: 'satellite', name: 'Satellite' }
-]
-const currentMapStyle = ref('osm-bright')
 
 const center = ref({ lat: 38.5449, lon: -121.7405 })
 const radiusKm = ref(50)
@@ -582,6 +584,7 @@ const searching = ref(false)
 const searchError = ref(null)
 const mapComponent = ref(null)
 const showDialog = ref(false)
+const centerSelectionActive = ref(false)
 
 const coordLat = ref(null)
 const coordLon = ref(null)
@@ -626,8 +629,14 @@ const spartanMonitors = computed(() => {
   return pointMonitors.value.filter(m => m.network === 'SPARTAN')
 })
 
-function updateCenter(newCenter) {
+function toggleCenterSelection() {
+  centerSelectionActive.value = !centerSelectionActive.value
+}
+
+function handleMapCenterUpdate(newCenter) {
+  if (!centerSelectionActive.value) return
   center.value = { ...newCenter }
+  centerSelectionActive.value = false
 }
 
 function toggleSatelliteVisibility(productId) {

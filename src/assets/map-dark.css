@@ -1,0 +1,81 @@
+/* MapLibre Dark Mode Styles */
+
+/* Light mode (default) */
+:root {
+  --map-ctrl-bg: #ffffff;
+  --map-ctrl-bg-hover: #f0f0f0;
+  --map-ctrl-bg-active: #d7d7d7;
+  --map-ctrl-text: #333333;
+  --map-ctrl-text-hover: #000000;
+  --map-ctrl-border: rgba(0, 0, 0, 0.1);
+  --map-ctrl-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.15), 0 1px 2px -1px rgb(0 0 0 / 0.15);
+}
+
+/* Dark mode */
+.dark {
+  --map-ctrl-bg: #1f2937;
+  --map-ctrl-bg-hover: #374151;
+  --map-ctrl-bg-active: #4b5563;
+  --map-ctrl-text: #e5e7eb;
+  --map-ctrl-text-hover: #ffffff;
+  --map-ctrl-border: rgba(255, 255, 255, 0.1);
+  --map-ctrl-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+}
+
+/* Apply to MapLibre controls */
+.maplibregl-ctrl-group {
+  background-color: var(--map-ctrl-bg) !important;
+  border-color: var(--map-ctrl-border) !important;
+  box-shadow: var(--map-ctrl-shadow) !important;
+}
+
+.maplibregl-ctrl-group button {
+  background-color: var(--map-ctrl-bg) !important;
+  color: var(--map-ctrl-text) !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background-color: var(--map-ctrl-bg-hover) !important;
+  color: var(--map-ctrl-text-hover) !important;
+}
+
+.maplibregl-ctrl-group button:active,
+.maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in.maplibregl-ctrl-zoom-out {
+  background-color: var(--map-ctrl-bg-active) !important;
+}
+
+/* Navigation control icons - make them visible in dark mode */
+.dark .maplibregl-ctrl-icon {
+  filter: invert(1) brightness(1.2);
+}
+
+/* Attribution control */
+.maplibregl-ctrl-attrib {
+  background-color: var(--map-ctrl-bg) !important;
+  color: var(--map-ctrl-text) !important;
+  border-color: var(--map-ctrl-border) !important;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: var(--map-ctrl-text-hover) !important;
+}
+
+/* Popup */
+.maplibregl-popup-content {
+  background-color: var(--map-ctrl-bg) !important;
+  color: var(--map-ctrl-text) !important;
+  box-shadow: var(--map-ctrl-shadow) !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: var(--map-ctrl-bg) !important;
+}
+
+.maplibregl-popup-close-button {
+  color: var(--map-ctrl-text) !important;
+}
+
+.maplibregl-popup-close-button:hover {
+  background-color: var(--map-ctrl-bg-hover) !important;
+  color: var(--map-ctrl-text-hover) !important;
+}
