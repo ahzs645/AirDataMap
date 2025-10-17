@@ -1,0 +1,29 @@
+[
+  {
+    "id": "PA-67890",
+    "name": "PurpleAir Station 67890",
+    "type": "point",
+    "network": "PurpleAir",
+    "parameters": [
+      "PM2.5"
+    ],
+    "status": "active",
+    "latitude": 33.7488,
+    "longitude": -84.3877,
+    "started": "2022-06-10"
+  },
+  {
+    "id": "AQS-13-045-0004",
+    "name": "AQS Jefferson County",
+    "type": "point",
+    "network": "EPA AQS",
+    "parameters": [
+      "Ozone",
+      "PM2.5"
+    ],
+    "status": "active",
+    "latitude": 33.5212,
+    "longitude": -86.8037,
+    "started": "2012-03-01"
+  }
+]
