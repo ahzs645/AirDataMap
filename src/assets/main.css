@@ -69,11 +69,79 @@ body {
   font-size: 0.9rem;
 }
 
-.sidebar input[type="number"] {
+.sidebar input[type="number"],
+.sidebar input[type="text"] {
   width: 100%;
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
   border: 1px solid #cbd5f5;
+  font-size: 0.95rem;
+}
+
+.search-container {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.search-container input {
+  flex: 1;
+}
+
+.search-container button {
+  padding: 0.5rem 1rem;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.search-container button:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.search-container button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.search-error {
+  color: #dc2626;
+  font-size: 0.85rem;
+  padding: 0.5rem;
+  background: #fef2f2;
+  border-radius: 0.5rem;
+  border: 1px solid #fecaca;
+}
+
+.coord-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.5rem;
+}
+
+.coord-inputs input {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #cbd5f5;
+  font-size: 0.9rem;
+}
+
+.coord-button {
+  padding: 0.5rem 1rem;
+  background: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.coord-button:hover {
+  background: #15803d;
 }
 
 .results {
@@ -98,6 +166,37 @@ body {
 
 .result-card small {
   color: #64748b;
+}
+
+.result-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.result-card li {
+  padding: 0.75rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.result-card li:hover {
+  border-color: #2563eb;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+  transform: translateX(2px);
+}
+
+.result-card li strong {
+  display: block;
+  color: #0f172a;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
 }
 
 .tag-group {

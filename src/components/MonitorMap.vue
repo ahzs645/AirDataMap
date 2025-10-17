@@ -10,13 +10,25 @@
       <span v-if="summary.totals.satellite">Satellite: {{ summary.totals.satellite }}</span>
       <span v-if="summary.totals.grids">Hex Grids: {{ summary.totals.grids }}</span>
     </div>
+    <div class="map-style-switcher">
+      <button
+        v-for="style in mapStyles"
+        :key="style.id"
+        :class="{ active: currentStyle === style.id }"
+        @click="switchMapStyle(style.id)"
+      >
+        {{ style.name }}
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import L from 'leaflet'
+import maplibregl from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
 import { cellToBoundary } from 'h3-js'
+import * as turf from '@turf/turf'
 
 const props = defineProps({
   center: {
@@ -48,204 +60,399 @@ const props = defineProps({
 const emit = defineEmits(['update:center'])
 
 const mapRef = ref(null)
-let mapInstance
-let circleLayer
-let pointLayer
-let satelliteLayer
-let hexLayer
+let map = null
+const currentStyle = ref('osm-bright')
 
-const defaultTile = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-
-function ensureLeafletLayer(layer) {
-  if (layer) {
-    layer.remove()
+// Free vector map styles - no API keys needed!
+const mapStyles = [
+  {
+    id: 'osm-bright',
+    name: 'Street',
+    url: 'https://tiles.openfreemap.org/styles/bright'
+  },
+  {
+    id: 'osm-liberty',
+    name: 'Classic',
+    url: 'https://tiles.openfreemap.org/styles/liberty'
+  },
+  {
+    id: 'satellite',
+    name: 'Satellite',
+    // Raster satellite overlay on vector base
+    url: 'https://tiles.openfreemap.org/styles/bright' // We'll add satellite layer on top
   }
-}
-
-function toLatLng(center) {
-  return [center.lat, center.lon]
-}
-
-function setCircle() {
-  if (!mapInstance) return
-  ensureLeafletLayer(circleLayer)
-  circleLayer = L.circle(toLatLng(props.center), {
-    radius: props.radiusKm * 1000,
-    color: '#2563eb',
-    weight: 1.5,
-    fillColor: '#60a5fa',
-    fillOpacity: 0.15
-  }).addTo(mapInstance)
-}
+]
 
 function buildPopupContent(feature) {
-  const lines = [`<strong>${feature.name ?? feature.id}</strong>`]
-  if (feature.network) {
-    lines.push(`<div><small>${feature.network}</small></div>`)
+  const props = feature.properties || feature
+  const lines = [`<strong>${props.name ?? props.id}</strong>`]
+  if (props.network) {
+    lines.push(`<div><small>${props.network}</small></div>`)
   }
-  if (feature.parameters?.length) {
-    lines.push(`<div>${feature.parameters.join(', ')}</div>`)
+  if (props.parameters?.length) {
+    lines.push(`<div>${props.parameters.join(', ')}</div>`)
   }
-  if (feature.status) {
-    lines.push(`<div>Status: ${feature.status}</div>`)
+  if (props.status) {
+    lines.push(`<div>Status: ${props.status}</div>`)
   }
-  if (feature.globalCoverage || feature.coverage === 'global') {
+  if (props.globalCoverage || props.coverage === 'global') {
     lines.push('<div>Coverage: Global</div>')
   }
-  if (feature.temporal) {
-    lines.push(`<div>Coverage: ${feature.temporal}</div>`)
+  if (props.temporal) {
+    lines.push(`<div>Coverage: ${props.temporal}</div>`)
   }
-  if (feature.frequency) {
-    lines.push(`<div>Frequency: ${feature.frequency}</div>`)
+  if (props.frequency) {
+    lines.push(`<div>Frequency: ${props.frequency}</div>`)
   }
   return lines.join('')
 }
 
-function setPoints() {
-  ensureLeafletLayer(pointLayer)
-  if (!props.points?.length || !mapInstance) return
-  pointLayer = L.layerGroup(
-    props.points.map((point) => {
-      const marker = L.circleMarker([point.latitude, point.longitude], {
-        radius: 6,
-        weight: 1,
-        color: '#16a34a',
-        fillColor: '#22c55e',
-        fillOpacity: 0.8
-      })
-      marker.bindPopup(buildPopupContent(point))
-      return marker
+function updateCircle() {
+  if (!map) return
+
+  const radiusMeters = props.radiusKm * 1000
+  const circleFeature = turf.circle([props.center.lon, props.center.lat], props.radiusKm, {
+    steps: 64,
+    units: 'kilometers'
+  })
+
+  if (map.getSource('search-circle')) {
+    map.getSource('search-circle').setData(circleFeature)
+  } else {
+    map.addSource('search-circle', {
+      type: 'geojson',
+      data: circleFeature
     })
-  ).addTo(mapInstance)
-}
 
-function geoJsonPolygonToLeaflet(coordinates) {
-  return coordinates.map((ring) => ring.map(([lon, lat]) => [lat, lon]))
-}
+    map.addLayer({
+      id: 'search-circle-fill',
+      type: 'fill',
+      source: 'search-circle',
+      paint: {
+        'fill-color': '#60a5fa',
+        'fill-opacity': 0.15
+      }
+    })
 
-function geometryToLeafletPolygons(geometry, options) {
-  if (!geometry) return []
-  const polygons = []
-  const baseOptions = {
-    color: '#7c3aed',
-    weight: 1,
-    fillOpacity: 0.2,
-    fillColor: '#a855f7',
-    ...options
-  }
-
-  if (geometry.type === 'Polygon') {
-    polygons.push(
-      L.polygon(geoJsonPolygonToLeaflet(geometry.coordinates), baseOptions)
-    )
-  } else if (geometry.type === 'MultiPolygon') {
-    geometry.coordinates.forEach((polygonCoords) => {
-      polygons.push(
-        L.polygon(geoJsonPolygonToLeaflet(polygonCoords), baseOptions)
-      )
+    map.addLayer({
+      id: 'search-circle-outline',
+      type: 'line',
+      source: 'search-circle',
+      paint: {
+        'line-color': '#2563eb',
+        'line-width': 1.5
+      }
     })
   }
-
-  return polygons
 }
 
-function setSatellite() {
-  ensureLeafletLayer(satelliteLayer)
-  if (!props.satelliteProducts?.length || !mapInstance) return
-  satelliteLayer = L.layerGroup(
-    props.satelliteProducts.map((product) => {
-      const polygon = L.polygon(geoJsonPolygonToLeaflet(product.geometry.coordinates), {
-        color: '#f97316',
-        weight: 1.5,
-        fillOpacity: 0.1,
-        fillColor: '#fb923c'
-      })
-      polygon.bindPopup(buildPopupContent(product))
-      return polygon
-    })
-  ).addTo(mapInstance)
-}
+function updatePoints() {
+  if (!map) return
 
-function ensureClosed(coords) {
-  if (!coords.length) return coords
-  const first = coords[0]
-  const last = coords[coords.length - 1]
-  if (first[0] !== last[0] || first[1] !== last[1]) {
-    return [...coords, first]
+  const features = props.points.map(point => ({
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: [point.longitude, point.latitude]
+    },
+    properties: point
+  }))
+
+  const geojson = {
+    type: 'FeatureCollection',
+    features
   }
-  return coords
+
+  if (map.getSource('points')) {
+    map.getSource('points').setData(geojson)
+  } else {
+    map.addSource('points', {
+      type: 'geojson',
+      data: geojson
+    })
+
+    map.addLayer({
+      id: 'points-layer',
+      type: 'circle',
+      source: 'points',
+      paint: {
+        'circle-radius': 8,
+        'circle-color': '#22c55e',
+        'circle-stroke-color': '#16a34a',
+        'circle-stroke-width': 1.5,
+        'circle-opacity': 0.9
+      }
+    })
+
+    // Add click handler for popups
+    map.on('click', 'points-layer', (e) => {
+      const coordinates = e.features[0].geometry.coordinates.slice()
+      const description = buildPopupContent(e.features[0])
+
+      new maplibregl.Popup()
+        .setLngLat(coordinates)
+        .setHTML(description)
+        .addTo(map)
+    })
+
+    map.on('mouseenter', 'points-layer', () => {
+      map.getCanvas().style.cursor = 'pointer'
+    })
+
+    map.on('mouseleave', 'points-layer', () => {
+      map.getCanvas().style.cursor = ''
+    })
+  }
 }
 
-function setHex() {
-  ensureLeafletLayer(hexLayer)
-  if (!props.hexProducts?.length || !mapInstance) return
+function updateSatellite() {
+  if (!map) return
 
-  const hexPolygons = []
-  props.hexProducts.forEach((product) => {
+  const features = props.satelliteProducts.map(product => ({
+    type: 'Feature',
+    geometry: product.geometry,
+    properties: product
+  }))
+
+  const geojson = {
+    type: 'FeatureCollection',
+    features
+  }
+
+  if (map.getSource('satellite')) {
+    map.getSource('satellite').setData(geojson)
+  } else {
+    map.addSource('satellite', {
+      type: 'geojson',
+      data: geojson
+    })
+
+    map.addLayer({
+      id: 'satellite-layer',
+      type: 'fill',
+      source: 'satellite',
+      paint: {
+        'fill-color': '#fb923c',
+        'fill-opacity': 0.1
+      }
+    })
+
+    map.addLayer({
+      id: 'satellite-outline',
+      type: 'line',
+      source: 'satellite',
+      paint: {
+        'line-color': '#f97316',
+        'line-width': 1.5
+      }
+    })
+
+    // Add click handler for popups
+    map.on('click', 'satellite-layer', (e) => {
+      const description = buildPopupContent(e.features[0])
+      new maplibregl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(description)
+        .addTo(map)
+    })
+
+    map.on('mouseenter', 'satellite-layer', () => {
+      map.getCanvas().style.cursor = 'pointer'
+    })
+
+    map.on('mouseleave', 'satellite-layer', () => {
+      map.getCanvas().style.cursor = ''
+    })
+  }
+}
+
+function updateHex() {
+  if (!map) return
+
+  const features = []
+
+  props.hexProducts.forEach(product => {
+    // Add product geometry if it exists
     if ((product.globalCoverage || product.geometryIntersects) && product.geometry) {
-      const geometryPolygons = geometryToLeafletPolygons(product.geometry)
-      geometryPolygons.forEach((polygon) => {
-        polygon.bindPopup(buildPopupContent(product))
-        hexPolygons.push(polygon)
+      features.push({
+        type: 'Feature',
+        geometry: product.geometry,
+        properties: product
       })
     }
 
-    product.cellsWithin.forEach((cell) => {
+    // Add individual H3 cells
+    product.cellsWithin?.forEach(cell => {
       const boundary = cellToBoundary(cell, true)
-      const coordinates = ensureClosed(boundary.map(([lat, lon]) => [lat, lon]))
-      const polygon = L.polygon(coordinates, {
-        color: '#7c3aed',
-        weight: 1,
-        fillOpacity: 0.2,
-        fillColor: '#a855f7'
+      const coordinates = boundary.map(([lat, lon]) => [lon, lat])
+      // Close the polygon
+      coordinates.push(coordinates[0])
+
+      features.push({
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [coordinates]
+        },
+        properties: product
       })
-      polygon.bindPopup(buildPopupContent(product))
-      hexPolygons.push(polygon)
     })
   })
 
-  if (!hexPolygons.length) return
+  const geojson = {
+    type: 'FeatureCollection',
+    features
+  }
 
-  hexLayer = L.layerGroup(hexPolygons).addTo(mapInstance)
+  if (map.getSource('hex-grids')) {
+    map.getSource('hex-grids').setData(geojson)
+  } else {
+    map.addSource('hex-grids', {
+      type: 'geojson',
+      data: geojson
+    })
+
+    map.addLayer({
+      id: 'hex-grids-layer',
+      type: 'fill',
+      source: 'hex-grids',
+      paint: {
+        'fill-color': '#a855f7',
+        'fill-opacity': 0.2
+      }
+    })
+
+    map.addLayer({
+      id: 'hex-grids-outline',
+      type: 'line',
+      source: 'hex-grids',
+      paint: {
+        'line-color': '#7c3aed',
+        'line-width': 1
+      }
+    })
+
+    // Add click handler for popups
+    map.on('click', 'hex-grids-layer', (e) => {
+      const description = buildPopupContent(e.features[0])
+      new maplibregl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(description)
+        .addTo(map)
+    })
+
+    map.on('mouseenter', 'hex-grids-layer', () => {
+      map.getCanvas().style.cursor = 'pointer'
+    })
+
+    map.on('mouseleave', 'hex-grids-layer', () => {
+      map.getCanvas().style.cursor = ''
+    })
+  }
 }
 
 function updateAllLayers() {
-  if (!mapInstance) return
-  setCircle()
-  setPoints()
-  setSatellite()
-  setHex()
+  if (!map || !map.isStyleLoaded()) return
+  updateCircle()
+  updatePoints()
+  updateSatellite()
+  updateHex()
 }
 
+function zoomToPoint(lat, lon) {
+  if (!map) return
+  map.flyTo({
+    center: [lon, lat],
+    zoom: 14,
+    essential: true
+  })
+}
+
+function switchMapStyle(styleId) {
+  if (!map || currentStyle.value === styleId) return
+
+  currentStyle.value = styleId
+  const style = mapStyles.find(s => s.id === styleId)
+
+  if (styleId === 'satellite') {
+    // For satellite, use the base style and add satellite imagery
+    map.setStyle(style.url)
+    map.once('styledata', () => {
+      // Add satellite imagery layer
+      if (!map.getSource('satellite-tiles')) {
+        map.addSource('satellite-tiles', {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          attribution: '© Esri'
+        })
+
+        // Insert satellite layer below labels
+        const layers = map.getStyle().layers
+        const firstSymbolId = layers.find(layer => layer.type === 'symbol')?.id
+
+        map.addLayer({
+          id: 'satellite-imagery',
+          type: 'raster',
+          source: 'satellite-tiles',
+          paint: {
+            'raster-opacity': 0.9
+          }
+        }, firstSymbolId)
+      }
+      updateAllLayers()
+    })
+  } else {
+    map.setStyle(style.url)
+    map.once('styledata', () => {
+      updateAllLayers()
+    })
+  }
+}
+
+defineExpose({
+  zoomToPoint
+})
+
 onMounted(() => {
-  mapInstance = L.map(mapRef.value, {
-    center: toLatLng(props.center),
-    zoom: 5,
-    minZoom: 2
+  map = new maplibregl.Map({
+    container: mapRef.value,
+    style: mapStyles[0].url,
+    center: [props.center.lon, props.center.lat],
+    zoom: 10
   })
 
-  L.tileLayer(defaultTile, {
-    maxZoom: 18,
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(mapInstance)
+  // Add navigation controls
+  map.addControl(new maplibregl.NavigationControl(), 'top-right')
 
-  mapInstance.on('click', (event) => {
-    emit('update:center', { lat: event.latlng.lat, lon: event.latlng.lng })
+  // Handle map clicks to update center
+  map.on('click', (e) => {
+    // Don't emit if clicking on a feature
+    const features = map.queryRenderedFeatures(e.point, {
+      layers: ['points-layer', 'satellite-layer', 'hex-grids-layer']
+    })
+
+    if (features.length === 0) {
+      emit('update:center', { lat: e.lngLat.lat, lon: e.lngLat.lng })
+    }
   })
 
-  updateAllLayers()
+  // Wait for style to load before adding layers
+  map.on('load', () => {
+    updateAllLayers()
+  })
 })
 
 onBeforeUnmount(() => {
-  mapInstance?.remove()
-  mapInstance = undefined
+  map?.remove()
+  map = null
 })
 
 watch(
   () => ({ ...props.center }),
   (center) => {
-    if (!mapInstance) return
-    mapInstance.setView(toLatLng(center), mapInstance.getZoom())
+    if (!map) return
+    map.setCenter([center.lon, center.lat])
     updateAllLayers()
   }
 )
@@ -265,3 +472,43 @@ watch(
   { deep: true }
 )
 </script>
+
+<style scoped>
+.map-style-switcher {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.map-style-switcher button {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: white;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  transition: all 0.2s;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.map-style-switcher button:last-child {
+  border-bottom: none;
+}
+
+.map-style-switcher button:hover {
+  background: #f3f4f6;
+}
+
+.map-style-switcher button.active {
+  background: #2563eb;
+  color: white;
+}
+</style>
