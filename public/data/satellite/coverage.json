@@ -9,6 +9,7 @@
     ],
     "temporal": "2000-present",
     "frequency": "daily",
+    "sourceUrl": "https://modis.gsfc.nasa.gov/data/dataprod/mod04.php",
     "geometry": {
       "type": "Polygon",
       "coordinates": [
@@ -47,6 +48,7 @@
     ],
     "temporal": "2017-present",
     "frequency": "hourly",
+    "sourceUrl": "https://www.star.nesdis.noaa.gov/goes/index.php",
     "geometry": {
       "type": "Polygon",
       "coordinates": [

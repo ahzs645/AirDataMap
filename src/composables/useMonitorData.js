@@ -2,10 +2,19 @@ import { computed, reactive, ref, watch } from 'vue'
 import * as turf from '@turf/turf'
 import { cellToBoundary } from 'h3-js'
 import { determineRegionFromLatLon, getRegionLabel } from '../utils/regions'
+import { parseCSV } from '../utils/csvParser'
 
 const regionMonitorCache = new Map()
 let satelliteCache = null
 let gridCache = null
+let csvMonitorCache = null
+let spartanCache = null
+
+// Force clear caches on any errors
+if (typeof window !== 'undefined') {
+  csvMonitorCache = null
+  spartanCache = null
+}
 
 async function fetchJson(path) {
   const response = await fetch(path)
@@ -13,6 +22,14 @@ async function fetchJson(path) {
     throw new Error(`Failed to fetch ${path}: ${response.status}`)
   }
   return response.json()
+}
+
+async function fetchCSV(path) {
+  const response = await fetch(path)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${path}: ${response.status}`)
+  }
+  return response.text()
 }
 
 function ensureClosedCoordinates(coordinates) {
@@ -44,6 +61,85 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef) {
     hexProducts: []
   })
 
+  async function loadCSVMonitors() {
+    if (csvMonitorCache) return csvMonitorCache
+    const csvText = await fetchCSV('/data/monitors.csv')
+    const parsedData = parseCSV(csvText)
+
+    // Convert to the expected format with only PA, FEM, and EGG monitors
+    const monitors = parsedData
+      .filter(row => {
+        const network = row.network?.trim()
+        // Check that we have valid network type and coordinates
+        if (!(network === 'PA' || network === 'FEM' || network === 'EGG')) return false
+        if (!row.lat || !row.lng) return false
+
+        // Parse and validate coordinates
+        const lat = parseFloat(row.lat)
+        const lng = parseFloat(row.lng)
+
+        // Make sure coordinates are valid numbers
+        return !isNaN(lat) && !isNaN(lng) &&
+               lat >= -90 && lat <= 90 &&
+               lng >= -180 && lng <= 180
+      })
+      .map(row => ({
+        id: row.sensor_index,
+        name: row.monitor || row.sensor_index,
+        network: row.network.trim(),
+        latitude: parseFloat(row.lat),
+        longitude: parseFloat(row.lng),
+        date: row.date,
+        pm25_recent: row.pm25_recent || null,
+        pm25_24hr: row.pm25_24hr || null,
+        temperature: row.temperature || null,
+        humidity: row.rh || null,
+        pressure: row.pressure || null,
+        parameters: ['PM2.5'],
+        status: 'active'
+      }))
+
+    csvMonitorCache = monitors
+    return monitors
+  }
+
+  async function loadSpartanMonitors() {
+    if (spartanCache) return spartanCache
+    const csvText = await fetchCSV('/data/spartan.csv')
+    const parsedData = parseCSV(csvText)
+
+    // Convert SPARTAN data to monitor format
+    const monitors = parsedData
+      .filter(row => {
+        // Validate coordinates exist and are valid
+        if (!row.Latitude || !row.Longitude) return false
+
+        const lat = parseFloat(row.Latitude)
+        const lng = parseFloat(row.Longitude)
+
+        return !isNaN(lat) && !isNaN(lng) &&
+               lat >= -90 && lat <= 90 &&
+               lng >= -180 && lng <= 180
+      })
+      .map(row => ({
+        id: row.Site_Code,
+        name: `${row.City}, ${row.Country}`,
+        network: 'SPARTAN',
+        latitude: parseFloat(row.Latitude),
+        longitude: parseFloat(row.Longitude),
+        siteCode: row.Site_Code,
+        city: row.City,
+        country: row.Country,
+        startDate: row.Start_date !== 'None' ? row.Start_date : null,
+        endDate: row.End_date !== 'None' ? row.End_date : null,
+        parameters: ['PM2.5', 'Chemical Composition', 'Optical Properties'],
+        status: row.End_date !== 'None' ? 'active' : 'planned'
+      }))
+
+    spartanCache = monitors
+    return monitors
+  }
+
   async function loadRegion(region) {
     if (regionMonitorCache.has(region)) {
       return regionMonitorCache.get(region)
@@ -73,7 +169,13 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef) {
       try {
         const regionKey = determineRegionFromLatLon(center.lat, center.lon)
         state.monitorRegion = regionKey
-        state.monitorRecords = await loadRegion(regionKey)
+        // Load both CSV monitors and SPARTAN monitors
+        const [csvMonitors, spartanMonitors] = await Promise.all([
+          loadCSVMonitors(),
+          loadSpartanMonitors()
+        ])
+        // Merge both datasets
+        state.monitorRecords = [...csvMonitors, ...spartanMonitors]
         state.satelliteProducts = await loadSatellite()
         state.hexProducts = await loadHexGrids()
       } catch (err) {
@@ -103,6 +205,13 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef) {
     if (!includePoints) return []
 
     return monitorRecords
+      .filter((record) => {
+        // Extra safety check: ensure valid coordinates
+        return typeof record.latitude === 'number' &&
+               typeof record.longitude === 'number' &&
+               !isNaN(record.latitude) &&
+               !isNaN(record.longitude)
+      })
       .map((record) => {
         const point = turf.point([record.longitude, record.latitude])
         const inside = turf.booleanPointInPolygon(point, searchCircle.value)
