@@ -404,10 +404,23 @@ function switchMapStyle(styleId) {
   const style = mapStyles.find(s => s.id === styleId)
   if (!style) return
 
-  if (styleId === 'satellite') {
-    // For satellite, use the base style and add satellite imagery
-    map.setStyle(style.url)
-    map.once('style.load', () => {
+  const currentView = {
+    center: map.getCenter(),
+    zoom: map.getZoom(),
+    bearing: map.getBearing(),
+    pitch: map.getPitch()
+  }
+
+  map.setStyle(style.url)
+  map.once('style.load', () => {
+    map.jumpTo({
+      center: [currentView.center.lng, currentView.center.lat],
+      zoom: currentView.zoom,
+      bearing: currentView.bearing,
+      pitch: currentView.pitch
+    })
+
+    if (styleId === 'satellite') {
       // Add satellite imagery layer
       map.addSource('satellite-tiles', {
         type: 'raster',
@@ -428,16 +441,10 @@ function switchMapStyle(styleId) {
           'raster-opacity': 0.9
         }
       }, firstSymbolId)
+    }
 
-      // Re-add all data layers after style loads
-      updateAllLayers()
-    })
-  } else {
-    map.setStyle(style.url)
-    map.once('style.load', () => {
-      updateAllLayers()
-    })
-  }
+    updateAllLayers()
+  })
 }
 
 defineExpose({
