@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
 export default defineConfig(({ command }) => {
-  const base = process.env.VITE_BASE_PATH ?? (command === 'build' ? '/AirDataMap/' : '/')
+  const base = process.env.VITE_BASE_PATH ?? (command === 'build' ? './' : '/')
 
   return {
     base,
