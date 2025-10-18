@@ -40,9 +40,7 @@ jobs:
         run: pnpm generate:data
 
       - name: Build site
-        env:
-          VITE_BASE_PATH: "/ahzs645/AirDataMap/"
-        run: pnpm build
+        run: pnpm build:pages
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
