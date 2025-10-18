@@ -41,7 +41,7 @@ jobs:
 
       - name: Build site
         env:
-          VITE_BASE_PATH: "/${{ github.event.repository.name }}/"
+          VITE_BASE_PATH: "/ahzs645/AirDataMap/"
         run: pnpm build
 
       - name: Upload GitHub Pages artifact
