@@ -830,10 +830,7 @@ import Button from './components/ui/button/Button.vue'
 import Separator from './components/ui/separator/Separator.vue'
 import Dialog from './components/ui/dialog/Dialog.vue'
 import Card from './components/ui/card/Card.vue'
-import CardHeader from './components/ui/card/CardHeader.vue'
 import CardContent from './components/ui/card/CardContent.vue'
-import CardTitle from './components/ui/card/CardTitle.vue'
-import CardDescription from './components/ui/card/CardDescription.vue'
 import { useMonitorData } from './composables/useMonitorData'
 import { useDarkMode } from './composables/useDarkMode'
 
@@ -906,14 +903,6 @@ const { loading, error, pointMonitors, satelliteMatches, hexMatches, summary } =
   viewModeRef,
   selectedNetworksRef
 )
-
-// Debug logging
-watch(pointMonitors, (monitors) => {
-  console.log('pointMonitors updated:', monitors.length, 'monitors')
-  if (monitors.length > 0) {
-    console.log('Sample monitor:', monitors[0])
-  }
-}, { immediate: true })
 
 // Filter satellite and hex products to only show visible ones on map
 const visibleSatelliteProducts = computed(() => {
