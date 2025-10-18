@@ -1,19 +1,22 @@
 <template>
   <div class="flex h-screen flex-col bg-background text-foreground">
     <!-- Unified Header -->
-    <header class="flex items-center justify-between border-b bg-background px-4 py-3">
+    <header class="flex items-center justify-between border-b bg-background px-3 py-2 lg:px-4 lg:py-3">
       <div class="flex items-center gap-6">
         <div>
-          <h1 class="text-lg font-semibold tracking-tight text-foreground">
+          <h1 class="text-base font-semibold tracking-tight text-foreground lg:text-lg">
             Air Quality Coverage
           </h1>
-          <p class="text-xs text-muted-foreground">
+          <p class="hidden text-xs text-muted-foreground lg:block">
             Monitoring results for your area
           </p>
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-4">
-        <div class="hidden items-center gap-3 text-xs text-muted-foreground 2xl:flex">
+        <div class="flex items-center gap-2 text-xs text-muted-foreground lg:hidden">
+          <span v-if="summary.totals.points" class="font-medium text-foreground">{{ summary.totals.points }} monitors</span>
+        </div>
+        <div class="hidden items-center gap-3 text-xs text-muted-foreground lg:flex 2xl:flex">
           <span v-if="summary.regionLabel" class="font-medium text-foreground">{{ summary.regionLabel }}</span>
           <span v-if="viewMode === 'radius'">Radius: {{ radiusKm.toFixed(0) }} km</span>
           <span v-if="viewMode === 'network'">Networks: {{ selectedNetworks.size }}</span>
@@ -21,7 +24,7 @@
           <span v-if="summary.totals.satellite">Satellite: {{ summary.totals.satellite }}</span>
           <span v-if="summary.totals.grids">Grids: {{ summary.totals.grids }}</span>
         </div>
-        <div class="flex items-center gap-2 rounded-md border bg-muted p-1">
+        <div v-if="!isMobile" class="flex items-center gap-2 rounded-md border bg-muted p-1">
           <Button
             :variant="viewMode === 'radius' ? 'default' : 'ghost'"
             size="sm"
@@ -39,7 +42,7 @@
             Networks
           </Button>
         </div>
-        <div v-if="viewMode === 'radius'" class="flex items-center gap-2">
+        <div v-if="!isMobile && viewMode === 'radius'" class="flex items-center gap-2">
           <label for="radius-input" class="text-[11px] uppercase tracking-wide text-muted-foreground">
             Radius (km)
           </label>
@@ -95,6 +98,7 @@
             </svg>
           </Button>
           <Button
+            v-if="!isMobile"
             :aria-pressed="centerSelectionActive"
             :variant="centerSelectionActive ? 'default' : 'outline'"
             size="sm"
@@ -120,7 +124,7 @@
             </svg>
             {{ centerSelectionActive ? 'Click map' : 'Move radius' }}
           </Button>
-          <Button @click="showDialog = true" size="sm">
+          <Button v-if="!isMobile" @click="showDialog = true" size="sm">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="24"
@@ -144,7 +148,7 @@
 
     <!-- Main Content Area -->
     <div class="flex flex-1 overflow-hidden lg:flex-row">
-      <aside class="flex w-full flex-col border-b border-r bg-muted/40 backdrop-blur-lg lg:max-w-md lg:border-b-0">
+      <aside v-if="!isMobile" class="flex w-full flex-col border-b border-r bg-muted/40 backdrop-blur-lg lg:max-w-md lg:border-b-0">
         <div class="flex h-full flex-col overflow-hidden p-6">
           <Card class="flex flex-1 flex-col overflow-hidden">
           <CardHeader class="pb-4">
@@ -882,6 +886,160 @@
       </main>
     </div>
 
+    <!-- Mobile Network Drawer -->
+    <Dialog v-if="isMobile" v-model="showMobileNetworkDrawer">
+      <div class="space-y-4">
+        <header>
+          <h2 class="text-xl font-semibold tracking-tight text-foreground">
+            Select Networks
+          </h2>
+          <p class="text-sm text-muted-foreground">
+            Choose which monitoring networks to display on the map.
+          </p>
+        </header>
+
+        <Separator />
+
+        <div class="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            @click="selectedNetworks.add('PA'); selectedNetworks.add('FEM'); selectedNetworks.add('EGG'); selectedNetworks.add('SPARTAN'); selectedNetworks.add('ASCENT'); selectedNetworks.add('EPA IMPROVE'); selectedNetworks.add('EPA NATTS'); selectedNetworks.add('EPA NCORE'); selectedNetworks.add('EPA CSN STN'); selectedNetworks.add('EPA NEAR ROAD'); selectedNetworks.add('BC ENV'); selectedNetworks.add('EPA PAMS')"
+          >
+            Select All
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            @click="selectedNetworks.clear()"
+          >
+            Clear All
+          </Button>
+        </div>
+
+        <Separator />
+
+        <ScrollArea class="max-h-[60vh]">
+          <div class="space-y-3">
+            <Checkbox :model-value="selectedNetworks.has('PA')" @update:model-value="(val) => val ? selectedNetworks.add('PA') : selectedNetworks.delete('PA')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-purple-500"></span>
+                <span class="font-medium">Purple Air</span>
+                <span class="text-xs text-muted-foreground">({{ purpleAirMonitors.length }})</span>
+              </span>
+            </Checkbox>
+            <Checkbox :model-value="selectedNetworks.has('FEM')" @update:model-value="(val) => val ? selectedNetworks.add('FEM') : selectedNetworks.delete('FEM')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-green-500"></span>
+                <span class="font-medium">FEM</span>
+                <span class="text-xs text-muted-foreground">({{ femMonitors.length }})</span>
+              </span>
+            </Checkbox>
+            <Checkbox :model-value="selectedNetworks.has('EGG')" @update:model-value="(val) => val ? selectedNetworks.add('EGG') : selectedNetworks.delete('EGG')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-blue-500"></span>
+                <span class="font-medium">AQ Egg</span>
+                <span class="text-xs text-muted-foreground">({{ eggMonitors.length }})</span>
+              </span>
+            </Checkbox>
+            <Checkbox :model-value="selectedNetworks.has('SPARTAN')" @update:model-value="(val) => val ? selectedNetworks.add('SPARTAN') : selectedNetworks.delete('SPARTAN')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-yellow-500"></span>
+                <span class="font-medium">SPARTAN</span>
+                <span class="text-xs text-muted-foreground">({{ spartanMonitors.length }})</span>
+              </span>
+            </Checkbox>
+            <Checkbox :model-value="selectedNetworks.has('ASCENT')" @update:model-value="(val) => val ? selectedNetworks.add('ASCENT') : selectedNetworks.delete('ASCENT')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-pink-500"></span>
+                <span class="font-medium">ASCENT</span>
+                <span class="text-xs text-muted-foreground">({{ ascentMonitors.length }})</span>
+              </span>
+            </Checkbox>
+            <Checkbox :model-value="selectedNetworks.has('EPA IMPROVE')" @update:model-value="(val) => val ? selectedNetworks.add('EPA IMPROVE') : selectedNetworks.delete('EPA IMPROVE')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-cyan-500"></span>
+                <span class="font-medium">EPA IMPROVE</span>
+                <span class="text-xs text-muted-foreground">({{ improveMonitors.length }})</span>
+              </span>
+            </Checkbox>
+            <Checkbox :model-value="selectedNetworks.has('EPA NATTS')" @update:model-value="(val) => val ? selectedNetworks.add('EPA NATTS') : selectedNetworks.delete('EPA NATTS')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-teal-500"></span>
+                <span class="font-medium">EPA NATTS</span>
+                <span class="text-xs text-muted-foreground">({{ nattsMonitors.length }})</span>
+              </span>
+            </Checkbox>
+            <Checkbox :model-value="selectedNetworks.has('EPA NCORE')" @update:model-value="(val) => val ? selectedNetworks.add('EPA NCORE') : selectedNetworks.delete('EPA NCORE')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-orange-500"></span>
+                <span class="font-medium">EPA NCORE</span>
+                <span class="text-xs text-muted-foreground">({{ ncoreMonitors.length }})</span>
+              </span>
+            </Checkbox>
+            <Checkbox :model-value="selectedNetworks.has('EPA CSN STN')" @update:model-value="(val) => val ? selectedNetworks.add('EPA CSN STN') : selectedNetworks.delete('EPA CSN STN')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-red-500"></span>
+                <span class="font-medium">EPA CSN STN</span>
+                <span class="text-xs text-muted-foreground">({{ csnMonitors.length }})</span>
+              </span>
+            </Checkbox>
+            <Checkbox :model-value="selectedNetworks.has('EPA NEAR ROAD')" @update:model-value="(val) => val ? selectedNetworks.add('EPA NEAR ROAD') : selectedNetworks.delete('EPA NEAR ROAD')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-violet-500"></span>
+                <span class="font-medium">EPA NEAR ROAD</span>
+                <span class="text-xs text-muted-foreground">({{ nearRoadMonitors.length }})</span>
+              </span>
+            </Checkbox>
+            <Checkbox :model-value="selectedNetworks.has('BC ENV')" @update:model-value="(val) => val ? selectedNetworks.add('BC ENV') : selectedNetworks.delete('BC ENV')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-emerald-500"></span>
+                <span class="font-medium">BC Environment</span>
+                <span class="text-xs text-muted-foreground">({{ bcEnvMonitors.length }})</span>
+              </span>
+            </Checkbox>
+            <Checkbox :model-value="selectedNetworks.has('EPA PAMS')" @update:model-value="(val) => val ? selectedNetworks.add('EPA PAMS') : selectedNetworks.delete('EPA PAMS')">
+              <span class="flex items-center gap-2">
+                <span class="inline-block h-3 w-3 rounded-full bg-indigo-500"></span>
+                <span class="font-medium">EPA PAMS</span>
+                <span class="text-xs text-muted-foreground">({{ pamsMonitors.length }})</span>
+              </span>
+            </Checkbox>
+          </div>
+        </ScrollArea>
+
+        <div class="flex justify-end gap-2 pt-4">
+          <Button @click="showMobileNetworkDrawer = false">
+            Done
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+
+    <!-- Floating Action Button for Mobile -->
+    <button
+      v-if="isMobile"
+      @click="showMobileNetworkDrawer = true"
+      class="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 active:scale-95"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="h-6 w-6"
+      >
+        <path d="M3 6h18"></path>
+        <path d="M3 12h18"></path>
+        <path d="M3 18h18"></path>
+      </svg>
+    </button>
+
     <Dialog v-model="showDialog">
       <div class="space-y-6">
         <header class="space-y-2">
@@ -1105,8 +1263,23 @@ const categories = reactive({
 })
 
 // View mode: 'radius' or 'network'
-const viewMode = ref('radius')
+// Mobile devices default to network mode
+const isMobile = ref(window.innerWidth < 1024)
+const viewMode = ref(isMobile.value ? 'network' : 'radius')
 const selectedNetworks = reactive(new Set(['PA', 'FEM', 'EGG']))
+const showMobileNetworkDrawer = ref(false)
+
+// Update mobile detection on window resize
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', () => {
+    const wasMobile = isMobile.value
+    isMobile.value = window.innerWidth < 1024
+    // Force network mode on mobile
+    if (isMobile.value && !wasMobile) {
+      viewMode.value = 'network'
+    }
+  })
+}
 
 const searchQuery = ref('')
 const searching = ref(false)
