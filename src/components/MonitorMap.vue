@@ -97,7 +97,14 @@ function buildPopupContent(feature) {
 }
 
 function updateCircle() {
-  if (!map || !map.isStyleLoaded()) return
+  if (!map) return
+
+  console.log('updateCircle called')
+
+  if (!map.isStyleLoaded()) {
+    console.warn('updateCircle: style not loaded, skipping')
+    return
+  }
 
   const circleFeature = turf.circle([props.center.lon, props.center.lat], props.radiusKm, {
     steps: 64,
@@ -143,25 +150,47 @@ function updateCircle() {
 }
 
 function updatePoints() {
-  if (!map || !map.isStyleLoaded()) return
+  if (!map) return
 
   console.log('updatePoints called with', props.points.length, 'points')
 
-  const features = props.points.map(point => ({
-    type: 'Feature',
-    geometry: {
-      type: 'Point',
-      coordinates: [point.longitude, point.latitude]
-    },
-    properties: point
-  }))
+  if (!map.isStyleLoaded()) {
+    console.warn('updatePoints: style not loaded, skipping')
+    return
+  }
+
+  // Filter out any points with invalid coordinates and create features
+  const features = props.points
+    .filter(point => {
+      const isValid = typeof point.longitude === 'number' &&
+                     typeof point.latitude === 'number' &&
+                     !isNaN(point.longitude) &&
+                     !isNaN(point.latitude) &&
+                     point.longitude >= -180 &&
+                     point.longitude <= 180 &&
+                     point.latitude >= -90 &&
+                     point.latitude <= 90
+
+      if (!isValid) {
+        console.warn('Skipping point with invalid coordinates:', point)
+      }
+      return isValid
+    })
+    .map(point => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [point.longitude, point.latitude]
+      },
+      properties: point
+    }))
 
   const geojson = {
     type: 'FeatureCollection',
     features
   }
 
-  console.log('GeoJSON features:', features.length)
+  console.log('GeoJSON features:', features.length, 'from', props.points.length, 'points')
 
   // Remove existing layers and source if they exist
   if (map.getLayer('points-layer')) {
@@ -406,15 +435,22 @@ function updateHex() {
   })
 }
 
-function updateAllLayers() {
-  if (!map) return
+function updateAllLayers({ force = false } = {}) {
+  if (!map) {
+    console.log('updateAllLayers: map not initialized')
+    return
+  }
 
-  if (!map.isStyleLoaded()) {
+  console.log('updateAllLayers called, force:', force, 'styleLoaded:', map.isStyleLoaded())
+
+  if (!force && !map.isStyleLoaded()) {
+    console.log('Style not loaded, waiting...')
     if (!pendingStyleRefresh) {
       pendingStyleRefresh = () => {
         if (!map || !map.isStyleLoaded()) return
         map.off('styledata', pendingStyleRefresh)
         pendingStyleRefresh = null
+        console.log('Style loaded via pending refresh, updating all layers')
         updateAllLayers()
       }
       map.on('styledata', pendingStyleRefresh)
@@ -427,6 +463,7 @@ function updateAllLayers() {
     pendingStyleRefresh = null
   }
 
+  console.log('Updating all layers now...')
   updateCircle()
   updatePoints()
   updateSatellite()
@@ -463,7 +500,7 @@ function switchMapStyle(styleId = BASE_STYLE_ID) {
       pitch: currentView.pitch
     })
 
-    updateAllLayers()
+    updateAllLayers({ force: true })
     setBaseCursor()
   })
 }
@@ -501,7 +538,7 @@ onMounted(() => {
   // Wait for style to load before adding layers
   map.on('load', () => {
     setBaseCursor()
-    updateAllLayers()
+    updateAllLayers({ force: true })
   })
 })
 
@@ -531,7 +568,23 @@ watch(
 )
 
 watch(
-  () => [props.points, props.satelliteProducts, props.hexProducts],
+  () => props.points,
+  () => {
+    updateAllLayers()
+  },
+  { deep: true }
+)
+
+watch(
+  () => props.satelliteProducts,
+  () => {
+    updateAllLayers()
+  },
+  { deep: true }
+)
+
+watch(
+  () => props.hexProducts,
   () => {
     updateAllLayers()
   },

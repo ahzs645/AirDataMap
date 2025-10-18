@@ -551,7 +551,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import MonitorMap from './components/MonitorMap.vue'
 import Button from './components/ui/button/Button.vue'
 import Input from './components/ui/input/Input.vue'
@@ -602,6 +602,14 @@ const { loading, error, pointMonitors, satelliteMatches, hexMatches, summary } =
   radiusKm,
   categoriesRef
 )
+
+// Debug logging
+watch(pointMonitors, (monitors) => {
+  console.log('pointMonitors updated:', monitors.length, 'monitors')
+  if (monitors.length > 0) {
+    console.log('Sample monitor:', monitors[0])
+  }
+}, { immediate: true })
 
 // Filter satellite and hex products to only show visible ones on map
 const visibleSatelliteProducts = computed(() => {
