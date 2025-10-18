@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { updateCircle } from '../utils/layers/circleLayer.js'
@@ -280,9 +280,11 @@ watch(
 
 watch(
   () => props.viewMode,
-  () => {
-    // Update the circle visibility when switching between modes
-    updateCircle(map, props.center, props.radiusKm, props.viewMode)
+  async () => {
+    // Wait for next tick to ensure computed properties have updated
+    await nextTick()
+    // Re-render all layers (including circle) to apply new filtering logic
+    scheduleLayerUpdate()
   }
 )
 </script>

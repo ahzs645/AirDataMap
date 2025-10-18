@@ -15,15 +15,11 @@ export function updateSatellite(map, satelliteProducts, setBaseCursor) {
     features
   }
 
-  // Remove existing layers and source if they exist
-  if (map.getLayer('satellite-outline')) {
-    map.removeLayer('satellite-outline')
-  }
-  if (map.getLayer('satellite-layer')) {
-    map.removeLayer('satellite-layer')
-  }
-  if (map.getSource('satellite')) {
-    map.removeSource('satellite')
+  // Update existing source if it exists, otherwise create it
+  const existingSource = map.getSource('satellite')
+  if (existingSource) {
+    existingSource.setData(geojson)
+    return // Early return - layers already exist
   }
 
   // Add fresh source and layers

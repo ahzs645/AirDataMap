@@ -44,15 +44,11 @@ export function updatePoints(map, points, setBaseCursor) {
     features
   }
 
-  // Remove existing layers and source if they exist
-  if (map.getLayer('points-layer')) {
-    map.removeLayer('points-layer')
-  }
-  if (map.getLayer('points-glow')) {
-    map.removeLayer('points-glow')
-  }
-  if (map.getSource('points')) {
-    map.removeSource('points')
+  // Update existing source if it exists, otherwise create it
+  const existingSource = map.getSource('points')
+  if (existingSource) {
+    existingSource.setData(geojson)
+    return // Early return - layers already exist
   }
 
   // Add fresh source and layer

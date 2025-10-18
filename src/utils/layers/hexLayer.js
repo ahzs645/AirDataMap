@@ -40,15 +40,11 @@ export function updateHex(map, hexProducts, setBaseCursor) {
     features
   }
 
-  // Remove existing layers and source if they exist
-  if (map.getLayer('hex-grids-outline')) {
-    map.removeLayer('hex-grids-outline')
-  }
-  if (map.getLayer('hex-grids-layer')) {
-    map.removeLayer('hex-grids-layer')
-  }
-  if (map.getSource('hex-grids')) {
-    map.removeSource('hex-grids')
+  // Update existing source if it exists, otherwise create it
+  const existingSource = map.getSource('hex-grids')
+  if (existingSource) {
+    existingSource.setData(geojson)
+    return // Early return - layers already exist
   }
 
   // Add fresh source and layers
