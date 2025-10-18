@@ -825,8 +825,21 @@ import { useDarkMode } from './composables/useDarkMode'
 
 const { isDark, toggleDarkMode } = useDarkMode()
 
-const center = ref({ lat: 38.5449, lon: -121.7405 })
-const radiusKm = ref(50)
+function parseEnvNumber(value, fallback) {
+  if (value === undefined || value === null || value === '') return fallback
+  const num = Number.parseFloat(value)
+  return Number.isFinite(num) ? num : fallback
+}
+
+const DEFAULT_CENTER = {
+  lat: parseEnvNumber(import.meta.env.VITE_DEFAULT_CENTER_LAT, 38.5449),
+  lon: parseEnvNumber(import.meta.env.VITE_DEFAULT_CENTER_LON, -121.7405)
+}
+
+const DEFAULT_RADIUS_KM = parseEnvNumber(import.meta.env.VITE_DEFAULT_RADIUS_KM, 50)
+
+const center = ref({ ...DEFAULT_CENTER })
+const radiusKm = ref(DEFAULT_RADIUS_KM)
 const categories = reactive({
   points: true,
   satellite: true,
