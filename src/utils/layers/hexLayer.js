@@ -80,7 +80,7 @@ export function updateHex(map, hexProducts, setBaseCursor) {
   // Add click handler for popups
   map.on('click', 'hex-grids-layer', (e) => {
     const description = buildPopupContent(e.features[0])
-    new maplibregl.Popup()
+    new maplibregl.Popup({ closeButton: false })
       .setLngLat(e.lngLat)
       .setHTML(description)
       .addTo(map)

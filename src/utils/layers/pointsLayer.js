@@ -125,13 +125,16 @@ export function updatePoints(map, points, setBaseCursor) {
       }
     })
 
-    const description = uniqueFeatures
-      .map((feature) => `<div class="space-y-1">${buildPopupContent(feature)}</div>`)
-      .join('<hr class="my-2 border-muted/40" />')
+    const items = uniqueFeatures.map((feature) => {
+      const networkColor = NETWORK_COLORS[feature.properties?.network] || '#9ca3af'
+      return `<div style="border-left: 2px solid ${networkColor}; padding: 4px 0 4px 8px; margin: 4px 0;">
+        ${buildPopupContent(feature)}
+      </div>`
+    })
 
-    const popupContent = `<div class="space-y-2">${description}</div>`
+    const popupContent = `<div style="padding: 2px;">${items.join('')}</div>`
 
-    new maplibregl.Popup()
+    new maplibregl.Popup({ closeButton: false })
       .setLngLat(e.lngLat)
       .setHTML(popupContent)
       .addTo(map)

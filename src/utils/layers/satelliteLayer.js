@@ -55,7 +55,7 @@ export function updateSatellite(map, satelliteProducts, setBaseCursor) {
   // Add click handler for popups
   map.on('click', 'satellite-layer', (e) => {
     const description = buildPopupContent(e.features[0])
-    new maplibregl.Popup()
+    new maplibregl.Popup({ closeButton: false })
       .setLngLat(e.lngLat)
       .setHTML(description)
       .addTo(map)

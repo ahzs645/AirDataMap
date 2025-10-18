@@ -9,8 +9,13 @@
       <li v-for="monitor in monitors.slice(0, 5)" :key="monitor.id" class="list-none">
         <button
           type="button"
-          class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-primary/40 hover:bg-accent/50"
+          class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:bg-accent/50"
+          :style="{
+            '--network-color': network.colorHex
+          }"
           @click="$emit('focus-point', monitor.latitude, monitor.longitude)"
+          @mouseenter="e => e.currentTarget.style.borderColor = network.colorHex"
+          @mouseleave="e => e.currentTarget.style.borderColor = 'transparent'"
         >
           <div class="flex items-center justify-between gap-2">
             <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
