@@ -147,9 +147,14 @@ function normalizeMonitorRecord(record) {
     address: record.address ?? null,
     currentNetwork: record.currentNetwork ?? null,
     instrumentMentor: record.instrumentMentor ?? null,
-    comments: record.comments ?? null,
+    comments: record.comments ?? record.notes ?? null,
     source: record.source ?? null,
-    description: record.description ?? null
+    description: record.description ?? null,
+    city: record.city ?? null,
+    stationOwner: record.stationOwner ?? record.owner ?? null,
+    category: record.category ?? null,
+    stationEnvironment: record.stationEnvironment ?? null,
+    url: record.url ?? record.URL ?? null
   }
 }
 

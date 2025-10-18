@@ -35,6 +35,7 @@ const ALLOWED_NETWORKS = new Set([
   'FEM',
   'EGG',
   'ASCENT',
+  'BC ENV',
   'EPA IMPROVE Visibility Network',
   'EPA National Air Toxics Trends Stations',
   'EPA NCore Multipollutant Network'
@@ -413,6 +414,102 @@ async function loadEpaNetworks() {
   return records
 }
 
+const BC_MEASUREMENT_FIELDS = [
+  { key: 'PM25', label: 'PM2.5' },
+  { key: 'PM25_24', label: 'PM2.5 (24h)' },
+  { key: 'PM10', label: 'PM10' },
+  { key: 'PM10_24', label: 'PM10 (24h)' },
+  { key: 'NO', label: 'NO' },
+  { key: 'NO2', label: 'NO2' },
+  { key: 'NOX', label: 'NOx' },
+  { key: 'O3', label: 'Ozone' },
+  { key: 'O3_8', label: 'Ozone (8h)' },
+  { key: 'SO2', label: 'SO2' },
+  { key: 'SO2_24', label: 'SO2 (24h)' },
+  { key: 'CO', label: 'CO' },
+  { key: 'TRS', label: 'TRS' },
+  { key: 'H2S', label: 'H2S' }
+]
+
+function hasMeasurement(row, key) {
+  if (!Object.prototype.hasOwnProperty.call(row, key)) return false
+  const value = row[key]
+  if (value === undefined || value === null) return false
+  const trimmed = String(value).trim()
+  if (!trimmed) return false
+  const numeric = Number.parseFloat(trimmed)
+  return Number.isFinite(numeric)
+}
+
+function buildBcParameters(row) {
+  const parameters = BC_MEASUREMENT_FIELDS
+    .filter(({ key }) => hasMeasurement(row, key))
+    .map(({ label }) => label)
+
+  if (!parameters.length && row.PM25_INSTRUMENT?.trim()) {
+    parameters.push('PM2.5')
+  }
+
+  return Array.from(new Set(parameters))
+}
+
+function mapBcStatus(status) {
+  if (!status) return 'active'
+  const value = status.trim().toLowerCase()
+  if (['on', 'active', 'yes', 'true', '1'].includes(value)) return 'active'
+  if (['off', 'inactive', 'no', 'false', '0'].includes(value)) return 'inactive'
+  return value
+}
+
+async function loadBcStations() {
+  const filePath = join(rootDir, 'public/data/bc/bc_air_monitoring_stations.csv')
+  let csvText = ''
+
+  try {
+    csvText = await readFile(filePath, 'utf8')
+  } catch (error) {
+    console.warn('BC monitoring stations CSV not found. Skipping BC ENV import.')
+    return []
+  }
+
+  const rows = parseCSV(csvText)
+  return rows
+    .map((row) => {
+      const latitude = toNumber(row.LATITUDE)
+      const longitude = toNumber(row.LONGITUDE)
+      if (latitude === null || longitude === null) return null
+
+      const idBase = row.SERIAL_CODE ?? row.EMS_ID ?? `${latitude}:${longitude}`
+      const parameters = buildBcParameters(row)
+      const status = mapBcStatus(row.STATUS ?? row.STATUS_TEXT ?? '')
+
+      return {
+        id: `BC-${idBase}`,
+        name: row.STATION_NAME?.trim() || row.LOCATION?.trim() || row.CITY?.trim() || 'BC Air Monitor',
+        network: 'BC ENV',
+        type: 'point',
+        latitude,
+        longitude,
+        date: row.DATE ?? null,
+        pm25_recent: toNumber(row.PM25),
+        pm25_24hr: toNumber(row.PM25_24),
+        temperature: toNumber(row.TEMP),
+        humidity: toNumber(row.HUMIDITY),
+        pressure: toNumber(row.BAR_PRESSURE),
+        parameters,
+        status,
+        city: row.CITY?.trim() || null,
+        stationOwner: row.STATION_OWNER?.trim() || null,
+        category: row.CATEGORY?.trim() || null,
+        stationEnvironment: row.STATION_ENVIRONMENT?.trim() || null,
+        notes: row.NOTES?.trim() || null,
+        url: row.URL_Station?.trim() || row.URL?.trim() || null,
+        source: 'bc-air-monitoring'
+      }
+    })
+    .filter((record) => record !== null)
+}
+
 async function build() {
   await ensureDir(join(rootDir, 'public/data/monitors'))
 
@@ -431,12 +528,19 @@ async function build() {
     .map(buildSpartanRecord)
     .filter((record) => record !== null)
 
-  const [ascentRecords, epaRecords] = await Promise.all([
+  const [ascentRecords, epaRecords, bcRecords] = await Promise.all([
     loadAscentSites(),
-    loadEpaNetworks()
+    loadEpaNetworks(),
+    loadBcStations()
   ])
 
-  const allRecords = [...monitorRecords, ...spartanRecords, ...ascentRecords, ...epaRecords]
+  const allRecords = [
+    ...monitorRecords,
+    ...spartanRecords,
+    ...ascentRecords,
+    ...bcRecords,
+    ...epaRecords
+  ]
 
   // Deduplicate on (id || lat/lon/network)
   const unique = new Map()
@@ -488,6 +592,10 @@ async function build() {
       ascent: {
         file: 'public/data/ascent-sites.json',
         records: ascentRecords.length
+      },
+      bcEnv: {
+        file: 'public/data/bc/bc_air_monitoring_stations.csv',
+        records: bcRecords.length
       },
       epa: {
         directory: 'public/data/epa',

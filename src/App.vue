@@ -280,6 +280,46 @@
                         </p>
                       </div>
 
+                      <!-- BC Ministry of Environment Monitors -->
+                      <div v-if="bcEnvMonitors.length" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                          <div class="h-3 w-3 rounded-full bg-teal-500"></div>
+                          <h4 class="text-sm font-medium text-foreground">BC Ministry of Environment</h4>
+                          <span class="text-xs text-muted-foreground">({{ bcEnvMonitors.length }})</span>
+                        </div>
+                        <ul class="space-y-2">
+                          <li v-for="monitor in bcEnvMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
+                            <button
+                              type="button"
+                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/20"
+                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
+                            >
+                              <div class="flex items-center justify-between gap-2">
+                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
+                                <Badge
+                                  v-if="monitor.status === 'inactive'"
+                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
+                                  variant="outline"
+                                >
+                                  INACTIVE
+                                </Badge>
+                              </div>
+                              <div class="text-xs text-muted-foreground">
+                                {{ [monitor.city, monitor.category].filter(Boolean).join(' · ') }}
+                              </div>
+                              <div class="flex flex-wrap gap-1.5">
+                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
+                                  {{ param }}
+                                </Badge>
+                              </div>
+                            </button>
+                          </li>
+                        </ul>
+                        <p v-if="bcEnvMonitors.length > 5" class="text-xs text-muted-foreground">
+                          + {{ bcEnvMonitors.length - 5 }} more BC monitors
+                        </p>
+                      </div>
+
                       <!-- ASCENT Network Sites -->
                       <div v-if="ascentMonitors.length" class="space-y-2">
                         <div class="flex items-center gap-2">
@@ -926,6 +966,10 @@ const csnMonitors = computed(() => {
 
 const nearRoadMonitors = computed(() => {
   return pointMonitors.value.filter(m => m.network === 'EPA NEAR ROAD')
+})
+
+const bcEnvMonitors = computed(() => {
+  return pointMonitors.value.filter(m => m.network === 'BC ENV')
 })
 
 function toggleCenterSelection() {

@@ -99,6 +99,12 @@ function buildPopupContent(feature) {
     const label = statusValue === 'inactive' ? 'Inactive' : props.status
     lines.push(`<div>Status: ${label}</div>`)
   }
+  if (props.city) {
+    lines.push(`<div>${props.city}${props.province ? `, ${props.province}` : ''}</div>`)
+  }
+  if (props.stationOwner) {
+    lines.push(`<div>Owner: ${props.stationOwner}</div>`)
+  }
   if (props.globalCoverage || props.coverage === 'global') {
     lines.push('<div>Coverage: Global</div>')
   }
@@ -116,6 +122,11 @@ function buildPopupContent(feature) {
   }
   if (props.comments) {
     lines.push(`<div>${props.comments}</div>`)
+  }
+  if (props.url) {
+    lines.push(
+      `<div><a href="${props.url}" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline">Station details →</a></div>`
+    )
   }
   return lines.join('')
 }
@@ -242,6 +253,7 @@ function updatePoints() {
           'EGG', '#3b82f6',
           'SPARTAN', '#f59e0b',
           'ASCENT', '#0ea5e9',
+          'BC ENV', '#0d9488',
           'EPA IMPROVE', '#14b8a6',
           'EPA NATTS', '#f97316',
           'EPA NCORE', '#6366f1',
@@ -275,6 +287,7 @@ function updatePoints() {
           'EGG', '#3b82f6',                      // Blue for AQ Egg
           'SPARTAN', '#f59e0b',                  // Amber/Orange for SPARTAN
           'ASCENT', '#0ea5e9',                   // Cyan for ASCENT
+          'BC ENV', '#0d9488',                   // Teal for BC ENV
           'EPA IMPROVE', '#14b8a6',              // Teal for IMPROVE
           'EPA NATTS', '#f97316',                // Orange for NATTS
           'EPA NCORE', '#6366f1',                // Indigo for NCore
