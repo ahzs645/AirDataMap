@@ -53,6 +53,7 @@ let pendingStyleRefresh = null
 let radiusUpdateTimeout = null
 let layerUpdateScheduled = false
 let pendingLayerForce = false
+let bypassStyleCheck = false
 
 // Free vector map styles - no API keys needed!
 const BASE_STYLE_ID = 'osm-bright'
@@ -508,9 +509,9 @@ function updateAllLayers({ force = false } = {}) {
     return
   }
 
-  console.log('updateAllLayers called, force:', force, 'styleLoaded:', map.isStyleLoaded())
+  console.log('updateAllLayers called, force:', force, 'styleLoaded:', map.isStyleLoaded(), 'bypassStyleCheck:', bypassStyleCheck)
 
-  if (!map.isStyleLoaded()) {
+  if (!bypassStyleCheck && !map.isStyleLoaded()) {
     if (!pendingStyleRefresh) {
       console.log('Style not loaded, waiting...')
       pendingStyleRefresh = () => {
@@ -529,6 +530,8 @@ function updateAllLayers({ force = false } = {}) {
     map.off('styledata', pendingStyleRefresh)
     pendingStyleRefresh = null
   }
+
+  bypassStyleCheck = false
 
   console.log('Updating all layers now...')
   updateCircle()
@@ -571,7 +574,13 @@ function switchMapStyle(styleId = BASE_STYLE_ID) {
   const styleUrl = getStyleUrl(styleId)
   map.setStyle(styleUrl)
 
-  map.once('style.load', () => {
+  // Use 'styledata' event to catch when the style is loaded but before first render
+  // This reduces the flash when switching themes
+  const onStyleData = (e) => {
+    if (e.dataType !== 'style') return
+
+    map.off('styledata', onStyleData)
+
     map.jumpTo({
       center: [currentView.center.lng, currentView.center.lat],
       zoom: currentView.zoom,
@@ -579,9 +588,13 @@ function switchMapStyle(styleId = BASE_STYLE_ID) {
       pitch: currentView.pitch
     })
 
+    // Bypass the isStyleLoaded() check since we know the style is ready
+    bypassStyleCheck = true
     updateAllLayers({ force: true })
     setBaseCursor()
-  })
+  }
+
+  map.on('styledata', onStyleData)
 }
 
 defineExpose({
