@@ -65,6 +65,34 @@
         />
       </div>
 
+      <!-- Heatmap Toggle (Desktop only) -->
+      <div v-if="!isMobile" class="flex items-center gap-2">
+        <Button
+          :variant="showHeatmap ? 'default' : 'outline'"
+          size="sm"
+          @click="$emit('toggle-heatmap')"
+          class="h-8"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="mr-1.5"
+          >
+            <path d="M2 12h20"></path>
+            <path d="M2 17h20"></path>
+            <path d="M2 7h20"></path>
+          </svg>
+          Heatmap
+        </Button>
+      </div>
+
       <div class="flex items-center gap-2">
         <!-- Dark Mode Toggle -->
         <Button @click="$emit('toggle-dark-mode')" size="sm" variant="ghost">
@@ -193,6 +221,10 @@ defineProps({
   isMobile: {
     type: Boolean,
     required: true
+  },
+  showHeatmap: {
+    type: Boolean,
+    required: true
   }
 })
 
@@ -201,6 +233,7 @@ defineEmits([
   'update:viewMode',
   'update:radiusKm',
   'toggle-center-selection',
-  'open-search'
+  'open-search',
+  'toggle-heatmap'
 ])
 </script>

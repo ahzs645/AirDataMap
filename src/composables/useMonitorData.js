@@ -423,15 +423,55 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRe
       .filter(Boolean)
   })
 
-  const summary = computed(() => ({
-    regionKey: state.monitorRegion,
-    regionLabel: getRegionLabel(state.monitorRegion),
-    totals: {
-      points: pointMonitors.value.length,
-      satellite: satelliteMatches.value.length,
-      grids: hexMatches.value.length
+  const summary = computed(() => {
+    const viewMode = viewModeRef?.value
+    const radius = radiusKmRef.value
+
+    // Calculate sensor density for radius mode
+    let density = null
+    if (viewMode === 'radius') {
+      // Calculate area of circle in km²: π * r²
+      const areaKm2 = Math.PI * radius * radius
+
+      // Total count
+      const totalCount = pointMonitors.value.length
+
+      // Count low-cost sensors (Purple Air and AQEgg)
+      const lowCostNetworks = new Set(['PA', 'EGG'])
+      const lowCostCount = pointMonitors.value.filter(p => lowCostNetworks.has(p.network)).length
+
+      // Count other sensors
+      const otherCount = totalCount - lowCostCount
+
+      // Debug: Log to check network property
+      if (totalCount > 0) {
+        console.log('[Density Debug] Sample sensor:', pointMonitors.value[0])
+        console.log('[Density Debug] Total sensors:', totalCount)
+        console.log('[Density Debug] Low-cost count:', lowCostCount)
+        console.log('[Density Debug] Other count:', otherCount)
+        console.log('[Density Debug] Looking for networks:', Array.from(lowCostNetworks))
+      }
+
+      // Calculate densities (sensors per km²)
+      density = {
+        lowCost: lowCostCount / areaKm2,
+        other: otherCount / areaKm2,
+        overall: totalCount / areaKm2,
+        areaKm2
+      }
     }
-  }))
+
+    return {
+      regionKey: state.monitorRegion,
+      regionLabel: getRegionLabel(state.monitorRegion),
+      totals: {
+        points: pointMonitors.value.length,
+        satellite: satelliteMatches.value.length,
+        grids: hexMatches.value.length
+      },
+      density
+    }
+  })
 
   return {
     loading,

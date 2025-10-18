@@ -15,8 +15,28 @@ const NETWORK_COLORS = {
   'EPA NEAR ROAD': '#facc15'
 }
 
-export function updatePoints(map, points, setBaseCursor) {
+export function updatePoints(map, points, setBaseCursor, showHeatmap = false) {
   if (!map) return
+
+  // If heatmap is enabled, hide the points
+  if (showHeatmap) {
+    // Hide the point layers if they exist
+    if (map.getLayer('points-layer')) {
+      map.setLayoutProperty('points-layer', 'visibility', 'none')
+    }
+    if (map.getLayer('points-glow')) {
+      map.setLayoutProperty('points-glow', 'visibility', 'none')
+    }
+    return
+  }
+
+  // Show the point layers if they exist and were previously hidden
+  if (map.getLayer('points-layer')) {
+    map.setLayoutProperty('points-layer', 'visibility', 'visible')
+  }
+  if (map.getLayer('points-glow')) {
+    map.setLayoutProperty('points-glow', 'visibility', 'visible')
+  }
 
   // Filter out any points with invalid coordinates and create features
   const features = points

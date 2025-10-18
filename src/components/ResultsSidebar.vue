@@ -42,9 +42,32 @@
               <div v-else-if="loading" class="flex flex-1 items-center justify-center px-6 py-10 text-sm text-muted-foreground">
                 Loading datasets…
               </div>
-              <ScrollArea v-else class="flex-1">
-                <slot name="results"></slot>
-              </ScrollArea>
+              <template v-else>
+                <!-- Sensor Density Stats -->
+                <div v-if="summary.density" class="border-b bg-muted/30 px-6 py-4">
+                  <h3 class="mb-3 text-sm font-semibold">Sensor Density</h3>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between">
+                      <span class="text-muted-foreground">Low-cost:</span>
+                      <span class="font-medium">{{ summary.density.lowCost.toFixed(2) }} sensors/km²</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <span class="text-muted-foreground">Other:</span>
+                      <span class="font-medium">{{ summary.density.other.toFixed(2) }} sensors/km²</span>
+                    </div>
+                    <div class="flex items-center justify-between border-t pt-2">
+                      <span class="font-medium">Overall:</span>
+                      <span class="font-semibold">{{ summary.density.overall.toFixed(2) }} sensors/km²</span>
+                    </div>
+                    <div class="text-xs text-muted-foreground">
+                      Area: {{ summary.density.areaKm2.toFixed(1) }} km²
+                    </div>
+                  </div>
+                </div>
+                <ScrollArea class="flex-1">
+                  <slot name="results"></slot>
+                </ScrollArea>
+              </template>
             </div>
           </template>
         </CardContent>

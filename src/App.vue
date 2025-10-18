@@ -8,11 +8,13 @@
       :summary="summary"
       :center-selection-active="centerSelectionActive"
       :is-mobile="isMobile"
+      :show-heatmap="showHeatmap"
       @toggle-dark-mode="toggleDarkMode"
       @update:view-mode="viewMode = $event"
-      @update:radius-km="radiusKm = $event"
+      @update:radius-km="radiusKm = Number($event)"
       @toggle-center-selection="toggleCenterSelection"
       @open-search="showDialog = true"
+      @toggle-heatmap="showHeatmap = !showHeatmap"
     />
 
     <!-- Main Content Area -->
@@ -54,6 +56,7 @@
           :center-selection-enabled="centerSelectionActive"
           :is-dark-mode="isDark"
           :view-mode="viewMode"
+          :show-heatmap="showHeatmap"
           @update:center="handleMapCenterUpdate"
         />
       </main>
@@ -302,6 +305,7 @@ const isMobile = ref(window.innerWidth < 1024)
 const viewMode = ref(isMobile.value ? 'network' : 'radius')
 const selectedNetworks = reactive(new Set(['PA', 'FEM', 'EGG']))
 const showMobileNetworkDrawer = ref(false)
+const showHeatmap = ref(false)
 
 // Update mobile detection on window resize
 if (typeof window !== 'undefined') {

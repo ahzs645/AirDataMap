@@ -12,6 +12,7 @@ import { updateCircle } from '../utils/layers/circleLayer.js'
 import { updatePoints } from '../utils/layers/pointsLayer.js'
 import { updateSatellite } from '../utils/layers/satelliteLayer.js'
 import { updateHex } from '../utils/layers/hexLayer.js'
+import { updateHeatmap } from '../utils/layers/heatmapLayer.js'
 const props = defineProps({
   center: {
     type: Object,
@@ -48,6 +49,10 @@ const props = defineProps({
   viewMode: {
     type: String,
     default: 'radius'
+  },
+  showHeatmap: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -108,7 +113,8 @@ function updateAllLayers() {
   bypassStyleCheck = false
 
   updateCircle(map, props.center, props.radiusKm, props.viewMode)
-  updatePoints(map, props.points, setBaseCursor)
+  updatePoints(map, props.points, setBaseCursor, props.showHeatmap)
+  updateHeatmap(map, props.points, props.showHeatmap)
   updateSatellite(map, props.satelliteProducts, setBaseCursor)
   updateHex(map, props.hexProducts, setBaseCursor)
 }
@@ -284,6 +290,14 @@ watch(
     // Wait for next tick to ensure computed properties have updated
     await nextTick()
     // Re-render all layers (including circle) to apply new filtering logic
+    scheduleLayerUpdate()
+  }
+)
+
+watch(
+  () => props.showHeatmap,
+  () => {
+    // Update heatmap layer when toggle changes
     scheduleLayerUpdate()
   }
 )
