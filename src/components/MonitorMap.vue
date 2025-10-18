@@ -42,6 +42,10 @@ const props = defineProps({
   isDarkMode: {
     type: Boolean,
     default: false
+  },
+  viewMode: {
+    type: String,
+    default: 'radius'
   }
 })
 
@@ -135,12 +139,7 @@ function buildPopupContent(feature) {
 function updateCircle() {
   if (!map) return
 
-  console.log('updateCircle called')
-
-  const circleFeature = turf.circle([props.center.lon, props.center.lat], props.radiusKm, {
-    steps: 64,
-    units: 'kilometers'
-  })
+  console.log('updateCircle called, viewMode:', props.viewMode)
 
   // Remove existing layers and source if they exist
   if (map.getLayer('search-circle-outline')) {
@@ -152,6 +151,16 @@ function updateCircle() {
   if (map.getSource('search-circle')) {
     map.removeSource('search-circle')
   }
+
+  // Only show circle in radius mode
+  if (props.viewMode !== 'radius') {
+    return
+  }
+
+  const circleFeature = turf.circle([props.center.lon, props.center.lat], props.radiusKm, {
+    steps: 64,
+    units: 'kilometers'
+  })
 
   // Add fresh source and layers
   map.addSource('search-circle', {
@@ -705,6 +714,14 @@ watch(
   () => {
     // Re-apply the current style with the new dark mode setting
     switchMapStyle()
+  }
+)
+
+watch(
+  () => props.viewMode,
+  () => {
+    // Update the circle visibility when switching between modes
+    updateCircle()
   }
 )
 </script>

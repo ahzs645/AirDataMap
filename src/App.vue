@@ -15,12 +15,31 @@
       <div class="flex flex-wrap items-center gap-4">
         <div class="hidden items-center gap-3 text-xs text-muted-foreground 2xl:flex">
           <span v-if="summary.regionLabel" class="font-medium text-foreground">{{ summary.regionLabel }}</span>
-          <span>Radius: {{ radiusKm.toFixed(0) }} km</span>
+          <span v-if="viewMode === 'radius'">Radius: {{ radiusKm.toFixed(0) }} km</span>
+          <span v-if="viewMode === 'network'">Networks: {{ selectedNetworks.size }}</span>
           <span v-if="summary.totals.points">Points: {{ summary.totals.points }}</span>
           <span v-if="summary.totals.satellite">Satellite: {{ summary.totals.satellite }}</span>
           <span v-if="summary.totals.grids">Grids: {{ summary.totals.grids }}</span>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 rounded-md border bg-muted p-1">
+          <Button
+            :variant="viewMode === 'radius' ? 'default' : 'ghost'"
+            size="sm"
+            class="h-7"
+            @click="viewMode = 'radius'"
+          >
+            Radius
+          </Button>
+          <Button
+            :variant="viewMode === 'network' ? 'default' : 'ghost'"
+            size="sm"
+            class="h-7"
+            @click="viewMode = 'network'"
+          >
+            Networks
+          </Button>
+        </div>
+        <div v-if="viewMode === 'radius'" class="flex items-center gap-2">
           <label for="radius-input" class="text-[11px] uppercase tracking-wide text-muted-foreground">
             Radius (km)
           </label>
@@ -129,9 +148,12 @@
         <div class="flex h-full flex-col overflow-hidden p-6">
           <Card class="flex flex-1 flex-col overflow-hidden">
           <CardHeader class="pb-4">
-            <CardTitle>Results</CardTitle>
+            <CardTitle>{{ viewMode === 'network' ? 'Network Selection' : 'Results' }}</CardTitle>
             <CardDescription>
-              <template v-if="summary.regionLabel">
+              <template v-if="viewMode === 'network'">
+                Select which monitoring networks to display on the map.
+              </template>
+              <template v-else-if="summary.regionLabel">
                 Region: {{ summary.regionLabel }}
               </template>
               <template v-else>
@@ -141,15 +163,128 @@
           </CardHeader>
           <Separator />
           <CardContent class="flex-1 overflow-hidden p-0">
-            <div class="flex h-full flex-col">
-              <div v-if="error" class="px-6 py-5 text-sm text-destructive">
-                <p class="font-medium">Unable to load datasets.</p>
-                <p class="text-muted-foreground">{{ error.message }}</p>
-              </div>
-              <div v-else-if="loading" class="flex flex-1 items-center justify-center px-6 py-10 text-sm text-muted-foreground">
-                Loading datasets…
-              </div>
-              <ScrollArea v-else class="flex-1">
+            <!-- Network Selection Mode -->
+            <template v-if="viewMode === 'network'">
+              <ScrollArea class="flex-1">
+                <div class="space-y-4 px-6 py-4">
+                  <div class="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      @click="selectedNetworks.add('PA'); selectedNetworks.add('FEM'); selectedNetworks.add('EGG'); selectedNetworks.add('SPARTAN'); selectedNetworks.add('ASCENT'); selectedNetworks.add('EPA IMPROVE'); selectedNetworks.add('EPA NATTS'); selectedNetworks.add('EPA NCORE'); selectedNetworks.add('EPA CSN STN'); selectedNetworks.add('EPA NEAR ROAD'); selectedNetworks.add('BC ENV'); selectedNetworks.add('EPA PAMS')"
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      @click="selectedNetworks.clear()"
+                    >
+                      Clear All
+                    </Button>
+                  </div>
+                  <Separator />
+                  <div class="space-y-3">
+                    <Checkbox :model-value="selectedNetworks.has('PA')" @update:model-value="(val) => val ? selectedNetworks.add('PA') : selectedNetworks.delete('PA')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-purple-500"></span>
+                        <span class="font-medium">Purple Air (PA)</span>
+                        <span class="text-xs text-muted-foreground">({{ purpleAirMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                    <Checkbox :model-value="selectedNetworks.has('FEM')" @update:model-value="(val) => val ? selectedNetworks.add('FEM') : selectedNetworks.delete('FEM')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-green-500"></span>
+                        <span class="font-medium">Federal Equivalent Method (FEM)</span>
+                        <span class="text-xs text-muted-foreground">({{ femMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                    <Checkbox :model-value="selectedNetworks.has('EGG')" @update:model-value="(val) => val ? selectedNetworks.add('EGG') : selectedNetworks.delete('EGG')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-blue-500"></span>
+                        <span class="font-medium">AQ Egg (EGG)</span>
+                        <span class="text-xs text-muted-foreground">({{ eggMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                    <Checkbox :model-value="selectedNetworks.has('SPARTAN')" @update:model-value="(val) => val ? selectedNetworks.add('SPARTAN') : selectedNetworks.delete('SPARTAN')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-yellow-500"></span>
+                        <span class="font-medium">SPARTAN</span>
+                        <span class="text-xs text-muted-foreground">({{ spartanMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                    <Checkbox :model-value="selectedNetworks.has('ASCENT')" @update:model-value="(val) => val ? selectedNetworks.add('ASCENT') : selectedNetworks.delete('ASCENT')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-pink-500"></span>
+                        <span class="font-medium">ASCENT Network</span>
+                        <span class="text-xs text-muted-foreground">({{ ascentMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                    <Checkbox :model-value="selectedNetworks.has('EPA IMPROVE')" @update:model-value="(val) => val ? selectedNetworks.add('EPA IMPROVE') : selectedNetworks.delete('EPA IMPROVE')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-cyan-500"></span>
+                        <span class="font-medium">EPA IMPROVE</span>
+                        <span class="text-xs text-muted-foreground">({{ improveMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                    <Checkbox :model-value="selectedNetworks.has('EPA NATTS')" @update:model-value="(val) => val ? selectedNetworks.add('EPA NATTS') : selectedNetworks.delete('EPA NATTS')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-teal-500"></span>
+                        <span class="font-medium">EPA NATTS</span>
+                        <span class="text-xs text-muted-foreground">({{ nattsMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                    <Checkbox :model-value="selectedNetworks.has('EPA NCORE')" @update:model-value="(val) => val ? selectedNetworks.add('EPA NCORE') : selectedNetworks.delete('EPA NCORE')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-orange-500"></span>
+                        <span class="font-medium">EPA NCORE</span>
+                        <span class="text-xs text-muted-foreground">({{ ncoreMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                    <Checkbox :model-value="selectedNetworks.has('EPA CSN STN')" @update:model-value="(val) => val ? selectedNetworks.add('EPA CSN STN') : selectedNetworks.delete('EPA CSN STN')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-red-500"></span>
+                        <span class="font-medium">EPA CSN STN</span>
+                        <span class="text-xs text-muted-foreground">({{ csnMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                    <Checkbox :model-value="selectedNetworks.has('EPA NEAR ROAD')" @update:model-value="(val) => val ? selectedNetworks.add('EPA NEAR ROAD') : selectedNetworks.delete('EPA NEAR ROAD')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-violet-500"></span>
+                        <span class="font-medium">EPA NEAR ROAD</span>
+                        <span class="text-xs text-muted-foreground">({{ nearRoadMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                    <Checkbox :model-value="selectedNetworks.has('BC ENV')" @update:model-value="(val) => val ? selectedNetworks.add('BC ENV') : selectedNetworks.delete('BC ENV')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-emerald-500"></span>
+                        <span class="font-medium">BC Environment (BC ENV)</span>
+                        <span class="text-xs text-muted-foreground">({{ bcEnvMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                    <Checkbox :model-value="selectedNetworks.has('EPA PAMS')" @update:model-value="(val) => val ? selectedNetworks.add('EPA PAMS') : selectedNetworks.delete('EPA PAMS')">
+                      <span class="flex items-center gap-2">
+                        <span class="inline-block h-3 w-3 rounded-full bg-indigo-500"></span>
+                        <span class="font-medium">EPA PAMS</span>
+                        <span class="text-xs text-muted-foreground">({{ pamsMonitors.length }} visible)</span>
+                      </span>
+                    </Checkbox>
+                  </div>
+                </div>
+              </ScrollArea>
+            </template>
+
+            <!-- Radius Mode Results -->
+            <template v-else>
+              <div class="flex h-full flex-col">
+                <div v-if="error" class="px-6 py-5 text-sm text-destructive">
+                  <p class="font-medium">Unable to load datasets.</p>
+                  <p class="text-muted-foreground">{{ error.message }}</p>
+                </div>
+                <div v-else-if="loading" class="flex flex-1 items-center justify-center px-6 py-10 text-sm text-muted-foreground">
+                  Loading datasets…
+                </div>
+                <ScrollArea v-else class="flex-1">
                 <div class="space-y-4 px-6 py-4">
                   <section v-if="categories.points" class="space-y-3">
                     <div class="flex items-center justify-between">
@@ -723,7 +858,8 @@
                   </section>
                 </div>
               </ScrollArea>
-            </div>
+              </div>
+            </template>
           </CardContent>
           </Card>
         </div>
@@ -740,6 +876,7 @@
           :summary="summary"
           :center-selection-enabled="centerSelectionActive"
           :is-dark-mode="isDark"
+          :view-mode="viewMode"
           @update:center="handleMapCenterUpdate"
         />
       </main>
@@ -838,6 +975,87 @@
               <Checkbox v-model="categories.grids">Hex grid products</Checkbox>
             </div>
           </div>
+
+          <Separator v-if="viewMode === 'network'" />
+
+          <div v-if="viewMode === 'network'" class="space-y-4">
+            <h3 class="text-lg font-semibold">Select networks</h3>
+            <p class="text-sm text-muted-foreground">Choose which monitoring networks to display on the map.</p>
+            <div class="space-y-3">
+              <Checkbox :model-value="selectedNetworks.has('PA')" @update:model-value="(val) => val ? selectedNetworks.add('PA') : selectedNetworks.delete('PA')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #a855f7"></span>
+                  Purple Air (PA)
+                </span>
+              </Checkbox>
+              <Checkbox :model-value="selectedNetworks.has('FEM')" @update:model-value="(val) => val ? selectedNetworks.add('FEM') : selectedNetworks.delete('FEM')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #22c55e"></span>
+                  Federal Equivalent Method (FEM)
+                </span>
+              </Checkbox>
+              <Checkbox :model-value="selectedNetworks.has('EGG')" @update:model-value="(val) => val ? selectedNetworks.add('EGG') : selectedNetworks.delete('EGG')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #3b82f6"></span>
+                  AQ Egg (EGG)
+                </span>
+              </Checkbox>
+              <Checkbox :model-value="selectedNetworks.has('SPARTAN')" @update:model-value="(val) => val ? selectedNetworks.add('SPARTAN') : selectedNetworks.delete('SPARTAN')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #eab308"></span>
+                  SPARTAN
+                </span>
+              </Checkbox>
+              <Checkbox :model-value="selectedNetworks.has('ASCENT')" @update:model-value="(val) => val ? selectedNetworks.add('ASCENT') : selectedNetworks.delete('ASCENT')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #ec4899"></span>
+                  ASCENT Network
+                </span>
+              </Checkbox>
+              <Checkbox :model-value="selectedNetworks.has('EPA IMPROVE')" @update:model-value="(val) => val ? selectedNetworks.add('EPA IMPROVE') : selectedNetworks.delete('EPA IMPROVE')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #06b6d4"></span>
+                  EPA IMPROVE
+                </span>
+              </Checkbox>
+              <Checkbox :model-value="selectedNetworks.has('EPA NATTS')" @update:model-value="(val) => val ? selectedNetworks.add('EPA NATTS') : selectedNetworks.delete('EPA NATTS')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #14b8a6"></span>
+                  EPA NATTS
+                </span>
+              </Checkbox>
+              <Checkbox :model-value="selectedNetworks.has('EPA NCORE')" @update:model-value="(val) => val ? selectedNetworks.add('EPA NCORE') : selectedNetworks.delete('EPA NCORE')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #f59e0b"></span>
+                  EPA NCORE
+                </span>
+              </Checkbox>
+              <Checkbox :model-value="selectedNetworks.has('EPA CSN STN')" @update:model-value="(val) => val ? selectedNetworks.add('EPA CSN STN') : selectedNetworks.delete('EPA CSN STN')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #ef4444"></span>
+                  EPA CSN STN
+                </span>
+              </Checkbox>
+              <Checkbox :model-value="selectedNetworks.has('EPA NEAR ROAD')" @update:model-value="(val) => val ? selectedNetworks.add('EPA NEAR ROAD') : selectedNetworks.delete('EPA NEAR ROAD')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #8b5cf6"></span>
+                  EPA NEAR ROAD
+                </span>
+              </Checkbox>
+              <Checkbox :model-value="selectedNetworks.has('BC ENV')" @update:model-value="(val) => val ? selectedNetworks.add('BC ENV') : selectedNetworks.delete('BC ENV')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #10b981"></span>
+                  BC Environment (BC ENV)
+                </span>
+              </Checkbox>
+              <Checkbox :model-value="selectedNetworks.has('EPA PAMS')" @update:model-value="(val) => val ? selectedNetworks.add('EPA PAMS') : selectedNetworks.delete('EPA PAMS')">
+                <span class="flex items-center gap-2">
+                  <span class="inline-block h-3 w-3 rounded-full" style="background-color: #6366f1"></span>
+                  EPA PAMS
+                </span>
+              </Checkbox>
+            </div>
+          </div>
         </div>
       </div>
     </Dialog>
@@ -886,6 +1104,10 @@ const categories = reactive({
   grids: true
 })
 
+// View mode: 'radius' or 'network'
+const viewMode = ref('radius')
+const selectedNetworks = reactive(new Set(['PA', 'FEM', 'EGG']))
+
 const searchQuery = ref('')
 const searching = ref(false)
 const searchError = ref(null)
@@ -903,11 +1125,15 @@ const visibleItems = reactive({
 })
 
 const categoriesRef = computed(() => categories)
+const viewModeRef = computed(() => viewMode.value)
+const selectedNetworksRef = computed(() => new Set(selectedNetworks))
 
 const { loading, error, pointMonitors, satelliteMatches, hexMatches, summary } = useMonitorData(
   center,
   radiusKm,
-  categoriesRef
+  categoriesRef,
+  viewModeRef,
+  selectedNetworksRef
 )
 
 // Debug logging
@@ -970,6 +1196,10 @@ const nearRoadMonitors = computed(() => {
 
 const bcEnvMonitors = computed(() => {
   return pointMonitors.value.filter(m => m.network === 'BC ENV')
+})
+
+const pamsMonitors = computed(() => {
+  return pointMonitors.value.filter(m => m.network === 'EPA PAMS')
 })
 
 function toggleCenterSelection() {

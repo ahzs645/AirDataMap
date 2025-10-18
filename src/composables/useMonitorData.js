@@ -158,7 +158,7 @@ function normalizeMonitorRecord(record) {
   }
 }
 
-export function useMonitorData(centerRef, radiusKmRef, categoriesRef) {
+export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRef, selectedNetworksRef) {
   const loading = ref(false)
   const error = ref(null)
 
@@ -321,6 +321,9 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef) {
     const includePoints = categoriesRef.value.points
     if (!includePoints) return []
 
+    const viewMode = viewModeRef?.value
+    const selectedNetworks = selectedNetworksRef?.value
+
     return monitorRecords
       .filter((record) => {
         // Extra safety check: ensure valid coordinates
@@ -329,12 +332,27 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef) {
                !isNaN(record.latitude) &&
                !isNaN(record.longitude)
       })
+      .filter((record) => {
+        // Network filtering mode
+        if (viewMode === 'network' && selectedNetworks && selectedNetworks.size > 0) {
+          return selectedNetworks.has(record.network)
+        }
+        return true
+      })
       .map((record) => {
-        const point = turf.point([record.longitude, record.latitude])
-        const inside = turf.booleanPointInPolygon(point, searchCircle.value)
+        // Radius filtering mode
+        if (viewMode === 'radius' || !viewMode) {
+          const point = turf.point([record.longitude, record.latitude])
+          const inside = turf.booleanPointInPolygon(point, searchCircle.value)
+          return {
+            ...record,
+            inside
+          }
+        }
+        // Network mode - no radius check
         return {
           ...record,
-          inside
+          inside: true
         }
       })
       .filter((record) => record.inside)
