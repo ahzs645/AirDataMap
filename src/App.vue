@@ -29,578 +29,16 @@
         @update:selected-networks="handleNetworkUpdate"
       >
         <template #results>
-          <div class="space-y-4 px-6 py-4">
-                  <section v-if="categories.points" class="space-y-3">
-                    <div class="flex items-center justify-between">
-                      <h3 class="text-base font-semibold text-foreground">Point Networks</h3>
-                      <p class="text-xs uppercase tracking-wide text-muted-foreground">{{ pointMonitors.length }} monitors</p>
-                    </div>
-                    <p v-if="!pointMonitors.length" class="text-sm text-muted-foreground">
-                      No point networks in range.
-                    </p>
-                    <div v-else class="space-y-3">
-                      <!-- Purple Air Monitors -->
-                      <div v-if="purpleAirMonitors.length" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <div class="h-3 w-3 rounded-full bg-purple-500"></div>
-                          <h4 class="text-sm font-medium text-foreground">Purple Air</h4>
-                          <span class="text-xs text-muted-foreground">({{ purpleAirMonitors.length }})</span>
-                        </div>
-                        <ul class="space-y-2">
-                          <li v-for="monitor in purpleAirMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20"
-                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
-                            >
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                            </button>
-                          </li>
-                        </ul>
-                        <p v-if="purpleAirMonitors.length > 5" class="text-xs text-muted-foreground">
-                          + {{ purpleAirMonitors.length - 5 }} more Purple Air monitors
-                        </p>
-                      </div>
-
-                      <!-- FEM Monitors -->
-                      <div v-if="femMonitors.length" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <div class="h-3 w-3 rounded-full bg-green-500"></div>
-                          <h4 class="text-sm font-medium text-foreground">FEM (Federal Equivalent Method)</h4>
-                          <span class="text-xs text-muted-foreground">({{ femMonitors.length }})</span>
-                        </div>
-                        <ul class="space-y-2">
-                          <li v-for="monitor in femMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-950/20"
-                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
-                            >
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                            </button>
-                          </li>
-                        </ul>
-                        <p v-if="femMonitors.length > 5" class="text-xs text-muted-foreground">
-                          + {{ femMonitors.length - 5 }} more FEM monitors
-                        </p>
-                      </div>
-
-                      <!-- AQ Egg Monitors -->
-                      <div v-if="eggMonitors.length" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <div class="h-3 w-3 rounded-full bg-blue-500"></div>
-                          <h4 class="text-sm font-medium text-foreground">AQ Egg</h4>
-                          <span class="text-xs text-muted-foreground">({{ eggMonitors.length }})</span>
-                        </div>
-                        <ul class="space-y-2">
-                          <li v-for="monitor in eggMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20"
-                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
-                            >
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                            </button>
-                          </li>
-                        </ul>
-                        <p v-if="eggMonitors.length > 5" class="text-xs text-muted-foreground">
-                          + {{ eggMonitors.length - 5 }} more AQ Egg monitors
-                        </p>
-                      </div>
-
-                      <!-- SPARTAN Network Monitors -->
-                      <div v-if="spartanMonitors.length" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <div class="h-3 w-3 rounded-full bg-amber-500"></div>
-                          <h4 class="text-sm font-medium text-foreground">SPARTAN Network</h4>
-                          <span class="text-xs text-muted-foreground">({{ spartanMonitors.length }})</span>
-                        </div>
-                        <ul class="space-y-2">
-                          <li v-for="monitor in spartanMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20"
-                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
-                            >
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                            </button>
-                          </li>
-                        </ul>
-                        <p v-if="spartanMonitors.length > 5" class="text-xs text-muted-foreground">
-                          + {{ spartanMonitors.length - 5 }} more SPARTAN monitors
-                        </p>
-                      </div>
-
-                      <!-- BC Ministry of Environment Monitors -->
-                      <div v-if="bcEnvMonitors.length" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <div class="h-3 w-3 rounded-full bg-teal-500"></div>
-                          <h4 class="text-sm font-medium text-foreground">BC Ministry of Environment</h4>
-                          <span class="text-xs text-muted-foreground">({{ bcEnvMonitors.length }})</span>
-                        </div>
-                        <ul class="space-y-2">
-                          <li v-for="monitor in bcEnvMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/20"
-                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
-                            >
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
-                                <Badge
-                                  v-if="monitor.status === 'inactive'"
-                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
-                                  variant="outline"
-                                >
-                                  INACTIVE
-                                </Badge>
-                              </div>
-                              <div class="text-xs text-muted-foreground">
-                                {{ [monitor.city, monitor.category].filter(Boolean).join(' · ') }}
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                            </button>
-                          </li>
-                        </ul>
-                        <p v-if="bcEnvMonitors.length > 5" class="text-xs text-muted-foreground">
-                          + {{ bcEnvMonitors.length - 5 }} more BC monitors
-                        </p>
-                      </div>
-
-                      <!-- ASCENT Network Sites -->
-                      <div v-if="ascentMonitors.length" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <div class="h-3 w-3 rounded-full bg-cyan-500"></div>
-                          <h4 class="text-sm font-medium text-foreground">ASCENT Network</h4>
-                          <span class="text-xs text-muted-foreground">({{ ascentMonitors.length }})</span>
-                        </div>
-                        <ul class="space-y-2">
-                          <li v-for="monitor in ascentMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/20"
-                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
-                            >
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
-                                <Badge
-                                  v-if="monitor.siteType"
-                                  variant="secondary"
-                                  class="text-[10px] uppercase tracking-wide"
-                                >
-                                  {{ monitor.siteType.toUpperCase() }}
-                                </Badge>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                              <p v-if="monitor.comments" class="text-xs text-muted-foreground">
-                                {{ monitor.comments }}
-                              </p>
-                            </button>
-                          </li>
-                        </ul>
-                        <p v-if="ascentMonitors.length > 5" class="text-xs text-muted-foreground">
-                          + {{ ascentMonitors.length - 5 }} more ASCENT sites
-                        </p>
-                      </div>
-
-                      <!-- EPA IMPROVE -->
-                      <div v-if="improveMonitors.length" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <div class="h-3 w-3 rounded-full bg-teal-500"></div>
-                          <h4 class="text-sm font-medium text-foreground">EPA IMPROVE Network</h4>
-                          <span class="text-xs text-muted-foreground">({{ improveMonitors.length }})</span>
-                        </div>
-                        <ul class="space-y-2">
-                          <li v-for="monitor in improveMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/20"
-                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
-                            >
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
-                                <Badge
-                                  v-if="monitor.status === 'inactive'"
-                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
-                                  variant="outline"
-                                >
-                                  INACTIVE
-                                </Badge>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                              <p v-if="monitor.state || monitor.county" class="text-xs text-muted-foreground">
-                                {{ [monitor.county, monitor.state].filter(Boolean).join(', ') }}
-                              </p>
-                            </button>
-                          </li>
-                        </ul>
-                        <p v-if="improveMonitors.length > 5" class="text-xs text-muted-foreground">
-                          + {{ improveMonitors.length - 5 }} more IMPROVE sites
-                        </p>
-                      </div>
-
-                      <!-- EPA NATTS -->
-                      <div v-if="nattsMonitors.length" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <div class="h-3 w-3 rounded-full bg-orange-500"></div>
-                          <h4 class="text-sm font-medium text-foreground">EPA NATTS</h4>
-                          <span class="text-xs text-muted-foreground">({{ nattsMonitors.length }})</span>
-                        </div>
-                        <ul class="space-y-2">
-                          <li v-for="monitor in nattsMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/20"
-                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
-                            >
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
-                                <Badge
-                                  v-if="monitor.status === 'inactive'"
-                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
-                                  variant="outline"
-                                >
-                                  INACTIVE
-                                </Badge>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                              <p v-if="monitor.state || monitor.county" class="text-xs text-muted-foreground">
-                                {{ [monitor.county, monitor.state].filter(Boolean).join(', ') }}
-                              </p>
-                            </button>
-                          </li>
-                        </ul>
-                        <p v-if="nattsMonitors.length > 5" class="text-xs text-muted-foreground">
-                          + {{ nattsMonitors.length - 5 }} more NATTS sites
-                        </p>
-                      </div>
-
-                      <!-- EPA Near Road -->
-                      <div v-if="nearRoadMonitors.length" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <div class="h-3 w-3 rounded-full bg-yellow-400"></div>
-                          <h4 class="text-sm font-medium text-foreground">EPA Near-Road Network</h4>
-                          <span class="text-xs text-muted-foreground">({{ nearRoadMonitors.length }})</span>
-                        </div>
-                        <ul class="space-y-2">
-                          <li v-for="monitor in nearRoadMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-950/20"
-                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
-                            >
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
-                                <Badge
-                                  v-if="monitor.status === 'inactive'"
-                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
-                                  variant="outline"
-                                >
-                                  INACTIVE
-                                </Badge>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                              <p v-if="monitor.state || monitor.county" class="text-xs text-muted-foreground">
-                                {{ [monitor.county, monitor.state].filter(Boolean).join(', ') }}
-                              </p>
-                            </button>
-                          </li>
-                        </ul>
-                        <p v-if="nearRoadMonitors.length > 5" class="text-xs text-muted-foreground">
-                          + {{ nearRoadMonitors.length - 5 }} more near-road sites
-                        </p>
-                      </div>
-
-                      <!-- EPA CSN (PM2.5 Speciation) -->
-                      <div v-if="csnMonitors.length" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <div class="h-3 w-3 rounded-full bg-purple-500"></div>
-                          <h4 class="text-sm font-medium text-foreground">EPA PM2.5 Chemical Speciation</h4>
-                          <span class="text-xs text-muted-foreground">({{ csnMonitors.length }})</span>
-                        </div>
-                        <ul class="space-y-2">
-                          <li v-for="monitor in csnMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20"
-                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
-                            >
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
-                                <Badge
-                                  v-if="monitor.status === 'inactive'"
-                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
-                                  variant="outline"
-                                >
-                                  INACTIVE
-                                </Badge>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                              <p v-if="monitor.state || monitor.county" class="text-xs text-muted-foreground">
-                                {{ [monitor.county, monitor.state].filter(Boolean).join(', ') }}
-                              </p>
-                            </button>
-                          </li>
-                        </ul>
-                        <p v-if="csnMonitors.length > 5" class="text-xs text-muted-foreground">
-                          + {{ csnMonitors.length - 5 }} more CSN sites
-                        </p>
-                      </div>
-
-                      <!-- EPA NCore -->
-                      <div v-if="ncoreMonitors.length" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <div class="h-3 w-3 rounded-full bg-indigo-500"></div>
-                          <h4 class="text-sm font-medium text-foreground">EPA NCore Multipollutant</h4>
-                          <span class="text-xs text-muted-foreground">({{ ncoreMonitors.length }})</span>
-                        </div>
-                        <ul class="space-y-2">
-                          <li v-for="monitor in ncoreMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
-                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
-                            >
-                              <div class="flex items-center justify-between gap-2">
-                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
-                                <Badge
-                                  v-if="monitor.status === 'inactive'"
-                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
-                                  variant="outline"
-                                >
-                                  INACTIVE
-                                </Badge>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                              <p v-if="monitor.state || monitor.county" class="text-xs text-muted-foreground">
-                                {{ [monitor.county, monitor.state].filter(Boolean).join(', ') }}
-                              </p>
-                            </button>
-                          </li>
-                        </ul>
-                        <p v-if="ncoreMonitors.length > 5" class="text-xs text-muted-foreground">
-                          + {{ ncoreMonitors.length - 5 }} more NCore sites
-                        </p>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section v-if="categories.satellite" class="space-y-2">
-                    <div class="flex items-center justify-between">
-                      <h3 class="text-base font-semibold text-foreground">Satellite Products</h3>
-                      <p class="text-xs uppercase tracking-wide text-muted-foreground">{{ satelliteMatches.length }} datasets</p>
-                    </div>
-                    <p v-if="!satelliteMatches.length" class="text-sm text-muted-foreground">
-                      No satellite coverage intersects the radius.
-                    </p>
-                    <ul v-else class="space-y-2">
-                      <li v-for="product in satelliteMatches" :key="product.id" class="list-none">
-                        <Card
-                          class="cursor-pointer transition-all hover:shadow-md"
-                          :class="visibleItems.satellites.has(product.id) ? 'border-primary bg-primary/5' : ''"
-                        >
-                          <CardContent class="p-3">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 text-left"
-                              @click="toggleSatelliteVisibility(product.id)"
-                            >
-                              <div class="flex items-start justify-between gap-2">
-                                <div class="flex-1">
-                                  <div class="text-sm font-semibold text-foreground">{{ product.name }}</div>
-                                  <span class="text-xs text-muted-foreground">{{ product.network }}</span>
-                                </div>
-                                <div
-                                  class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"
-                                  :class="visibleItems.satellites.has(product.id) ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30'"
-                                >
-                                  <svg
-                                    v-if="visibleItems.satellites.has(product.id)"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    class="h-2.5 w-2.5"
-                                  >
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                  </svg>
-                                </div>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in product.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                              <div class="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                                <span>
-                                  {{ product.temporal }}
-                                  <template v-if="product.frequency"> • {{ product.frequency }}</template>
-                                </span>
-                                <a
-                                  v-if="product.sourceUrl"
-                                  :href="product.sourceUrl"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  class="shrink-0 text-primary hover:underline"
-                                  @click.stop
-                                >
-                                  Source →
-                                </a>
-                              </div>
-                            </button>
-                          </CardContent>
-                        </Card>
-                      </li>
-                    </ul>
-                  </section>
-
-                  <section v-if="categories.grids" class="space-y-2">
-                    <div class="flex items-center justify-between">
-                      <h3 class="text-base font-semibold text-foreground">Hex Grid Products</h3>
-                      <p class="text-xs uppercase tracking-wide text-muted-foreground">{{ hexMatches.length }} datasets</p>
-                    </div>
-                    <p v-if="!hexMatches.length" class="text-sm text-muted-foreground">
-                      No grid cells intersect the search area.
-                    </p>
-                    <ul v-else class="space-y-2">
-                      <li v-for="product in hexMatches" :key="product.id" class="list-none">
-                        <Card
-                          class="cursor-pointer transition-all hover:shadow-md"
-                          :class="visibleItems.hexProducts.has(product.id) ? 'border-primary bg-primary/5' : ''"
-                        >
-                          <CardContent class="p-3">
-                            <button
-                              type="button"
-                              class="flex w-full flex-col gap-2 text-left"
-                              @click="toggleHexVisibility(product.id)"
-                            >
-                              <div class="flex items-start justify-between gap-2">
-                                <div class="flex-1">
-                                  <div class="text-sm font-semibold text-foreground">{{ product.name }}</div>
-                                  <span class="text-xs text-muted-foreground">{{ product.network }}</span>
-                                </div>
-                                <div
-                                  class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"
-                                  :class="visibleItems.hexProducts.has(product.id) ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30'"
-                                >
-                                  <svg
-                                    v-if="visibleItems.hexProducts.has(product.id)"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    class="h-2.5 w-2.5"
-                                  >
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                  </svg>
-                                </div>
-                              </div>
-                              <div class="flex flex-wrap gap-1.5">
-                                <Badge v-for="param in product.parameters" :key="param" variant="outline" class="text-xs">
-                                  {{ param }}
-                                </Badge>
-                              </div>
-                              <div class="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                                <span>
-                                  <template v-if="product.globalCoverage">
-                                    Global coverage
-                                  </template>
-                                  <template v-else-if="product.cellsWithin.length">
-                                    Cells: {{ product.cellsWithin.length }}
-                                  </template>
-                                  <template v-else-if="product.geometryIntersects">
-                                    Intersects area
-                                  </template>
-                                  <template v-else>
-                                    Local coverage
-                                  </template>
-                                  <template v-if="product.temporal"> • {{ product.temporal }}</template>
-                                  <template v-if="product.frequency"> • {{ product.frequency }}</template>
-                                </span>
-                                <a
-                                  v-if="product.sourceUrl"
-                                  :href="product.sourceUrl"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  class="shrink-0 text-primary hover:underline"
-                                  @click.stop
-                                >
-                                  Source →
-                                </a>
-                              </div>
-                            </button>
-                          </CardContent>
-                        </Card>
-                      </li>
-            </ul>
-          </section>
-        </div>
+          <ResultsList
+            :categories="categories"
+            :monitors-by-network="monitorsByNetwork"
+            :satellite-matches="satelliteMatches"
+            :hex-matches="hexMatches"
+            :visible-items="visibleItems"
+            @focus-point="focusOnPoint"
+            @toggle-satellite="toggleSatelliteVisibility"
+            @toggle-hex="toggleHexVisibility"
+          />
       </template>
     </ResultsSidebar>
 
@@ -656,7 +94,7 @@
             <h3 class="text-lg font-semibold">Location search</h3>
             <p class="text-sm text-muted-foreground">Quickly find a place by typing an address or location keyword.</p>
 
-            <form class="space-y-3" @submit.prevent="searchAddress">
+            <form class="space-y-3" @submit.prevent="handleSearchAddress">
               <Label for="address-search">Search by address</Label>
               <div class="flex flex-col gap-2 sm:flex-row">
                 <Input
@@ -817,22 +255,23 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import MonitorMap from './components/MonitorMap.vue'
 import AppHeader from './components/AppHeader.vue'
 import ResultsSidebar from './components/ResultsSidebar.vue'
 import MobileNetworkDrawer from './components/MobileNetworkDrawer.vue'
 import FloatingActionButton from './components/FloatingActionButton.vue'
-import Badge from './components/ui/badge/Badge.vue'
+import ResultsList from './components/ResultsList.vue'
 import Label from './components/ui/label/Label.vue'
 import Input from './components/ui/input/Input.vue'
 import Button from './components/ui/button/Button.vue'
 import Separator from './components/ui/separator/Separator.vue'
 import Dialog from './components/ui/dialog/Dialog.vue'
-import Card from './components/ui/card/Card.vue'
-import CardContent from './components/ui/card/CardContent.vue'
+import Checkbox from './components/ui/checkbox/Checkbox.vue'
 import { useMonitorData } from './composables/useMonitorData'
 import { useDarkMode } from './composables/useDarkMode'
+import { useVisibleItems } from './composables/useVisibleItems'
+import { useGeocoding } from './composables/useGeocoding'
 
 const { isDark, toggleDarkMode } = useDarkMode()
 
@@ -876,21 +315,12 @@ if (typeof window !== 'undefined') {
   })
 }
 
-const searchQuery = ref('')
-const searching = ref(false)
-const searchError = ref(null)
 const mapComponent = ref(null)
 const showDialog = ref(false)
 const centerSelectionActive = ref(false)
 
 const coordLat = ref(null)
 const coordLon = ref(null)
-
-// Track which items are visible on the map
-const visibleItems = reactive({
-  satellites: new Set(),
-  hexProducts: new Set()
-})
 
 const categoriesRef = computed(() => categories)
 const viewModeRef = computed(() => viewMode.value)
@@ -904,79 +334,44 @@ const { loading, error, pointMonitors, satelliteMatches, hexMatches, summary } =
   selectedNetworksRef
 )
 
-// Filter satellite and hex products to only show visible ones on map
-const visibleSatelliteProducts = computed(() => {
-  return satelliteMatches.value.filter(p => visibleItems.satellites.has(p.id))
-})
-
-const visibleHexProducts = computed(() => {
-  return hexMatches.value.filter(p => visibleItems.hexProducts.has(p.id))
-})
+// Use composables for visible items and geocoding
+const { visibleItems, toggleSatelliteVisibility, toggleHexVisibility, visibleSatelliteProducts, visibleHexProducts } = useVisibleItems(satelliteMatches, hexMatches)
+const { searchQuery, searching, searchError, searchAddress } = useGeocoding(center)
 
 // Group monitors by network type
-const purpleAirMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'PA')
-})
+const monitorsByNetwork = computed(() => {
+  const groups = {
+    'PA': [],
+    'FEM': [],
+    'EGG': [],
+    'SPARTAN': [],
+    'ASCENT': [],
+    'EPA IMPROVE': [],
+    'EPA NATTS': [],
+    'EPA NCORE': [],
+    'EPA CSN STN': [],
+    'EPA NEAR ROAD': [],
+    'BC ENV': [],
+    'EPA PAMS': []
+  }
 
-const femMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'FEM')
-})
+  pointMonitors.value.forEach(monitor => {
+    if (groups[monitor.network]) {
+      groups[monitor.network].push(monitor)
+    }
+  })
 
-const eggMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'EGG')
-})
-
-const spartanMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'SPARTAN')
-})
-
-const ascentMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'ASCENT')
-})
-
-const improveMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'EPA IMPROVE')
-})
-
-const nattsMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'EPA NATTS')
-})
-
-const ncoreMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'EPA NCORE')
-})
-
-const csnMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'EPA CSN STN')
-})
-
-const nearRoadMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'EPA NEAR ROAD')
-})
-
-const bcEnvMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'BC ENV')
-})
-
-const pamsMonitors = computed(() => {
-  return pointMonitors.value.filter(m => m.network === 'EPA PAMS')
+  return groups
 })
 
 // Network counts for NetworkSelector component
-const networkCounts = computed(() => ({
-  PA: purpleAirMonitors.value.length,
-  FEM: femMonitors.value.length,
-  EGG: eggMonitors.value.length,
-  SPARTAN: spartanMonitors.value.length,
-  ASCENT: ascentMonitors.value.length,
-  'EPA IMPROVE': improveMonitors.value.length,
-  'EPA NATTS': nattsMonitors.value.length,
-  'EPA NCORE': ncoreMonitors.value.length,
-  'EPA CSN STN': csnMonitors.value.length,
-  'EPA NEAR ROAD': nearRoadMonitors.value.length,
-  'BC ENV': bcEnvMonitors.value.length,
-  'EPA PAMS': pamsMonitors.value.length
-}))
+const networkCounts = computed(() => {
+  const counts = {}
+  Object.keys(monitorsByNetwork.value).forEach(network => {
+    counts[network] = monitorsByNetwork.value[network].length
+  })
+  return counts
+})
 
 function handleNetworkUpdate(newSet) {
   selectedNetworks.clear()
@@ -991,22 +386,6 @@ function handleMapCenterUpdate(newCenter) {
   if (!centerSelectionActive.value) return
   center.value = { ...newCenter }
   centerSelectionActive.value = false
-}
-
-function toggleSatelliteVisibility(productId) {
-  if (visibleItems.satellites.has(productId)) {
-    visibleItems.satellites.delete(productId)
-  } else {
-    visibleItems.satellites.add(productId)
-  }
-}
-
-function toggleHexVisibility(productId) {
-  if (visibleItems.hexProducts.has(productId)) {
-    visibleItems.hexProducts.delete(productId)
-  } else {
-    visibleItems.hexProducts.add(productId)
-  }
 }
 
 function focusOnPoint(lat, lon) {
@@ -1030,39 +409,10 @@ function setCoordinates() {
   }
 }
 
-async function searchAddress() {
-  if (!searchQuery.value.trim()) return
-
-  searching.value = true
-  searchError.value = null
-
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery.value)}&limit=1`
-    )
-
-    if (!response.ok) {
-      throw new Error('Geocoding service unavailable')
-    }
-
-    const results = await response.json()
-
-    if (results.length === 0) {
-      searchError.value = 'No results found. Try a different search term.'
-      return
-    }
-
-    const result = results[0]
-    center.value = {
-      lat: parseFloat(result.lat),
-      lon: parseFloat(result.lon)
-    }
+async function handleSearchAddress() {
+  const success = await searchAddress()
+  if (success) {
     showDialog.value = false
-  } catch (err) {
-    console.error('Geocoding error:', err)
-    searchError.value = 'Failed to search address. Please try again.'
-  } finally {
-    searching.value = false
   }
 }
 </script>

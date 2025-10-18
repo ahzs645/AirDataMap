@@ -94,17 +94,17 @@ const props = defineProps({
 defineEmits(['focus-point', 'toggle-satellite', 'toggle-hex'])
 
 const monitorNetworks = [
-  { id: 'PA', name: 'Purple Air', color: 'purple', hoverColor: 'purple' },
-  { id: 'FEM', name: 'FEM (Federal Equivalent Method)', color: 'green', hoverColor: 'green' },
-  { id: 'EGG', name: 'AQ Egg', color: 'blue', hoverColor: 'blue' },
-  { id: 'SPARTAN', name: 'SPARTAN Network', color: 'amber', hoverColor: 'amber' },
-  { id: 'BC ENV', name: 'BC Ministry of Environment', color: 'teal', hoverColor: 'teal' },
-  { id: 'ASCENT', name: 'ASCENT Network', color: 'cyan', hoverColor: 'cyan' },
-  { id: 'EPA IMPROVE', name: 'EPA IMPROVE Network', color: 'teal', hoverColor: 'teal' },
-  { id: 'EPA NATTS', name: 'EPA NATTS', color: 'orange', hoverColor: 'orange' },
-  { id: 'EPA NEAR ROAD', name: 'EPA Near-Road Network', color: 'yellow', hoverColor: 'yellow' },
-  { id: 'EPA CSN STN', name: 'EPA PM2.5 Chemical Speciation', color: 'purple', hoverColor: 'purple' },
-  { id: 'EPA NCORE', name: 'EPA NCore Multipollutant', color: 'indigo', hoverColor: 'indigo' }
+  { id: 'PA', name: 'Purple Air', colorHex: '#a855f7' },
+  { id: 'FEM', name: 'FEM (Federal Equivalent Method)', colorHex: '#22c55e' },
+  { id: 'EGG', name: 'AQ Egg', colorHex: '#3b82f6' },
+  { id: 'SPARTAN', name: 'SPARTAN Network', colorHex: '#f59e0b' },
+  { id: 'BC ENV', name: 'BC Ministry of Environment', colorHex: '#0d9488' },
+  { id: 'ASCENT', name: 'ASCENT Network', colorHex: '#0ea5e9' },
+  { id: 'EPA IMPROVE', name: 'EPA IMPROVE Network', colorHex: '#14b8a6' },
+  { id: 'EPA NATTS', name: 'EPA NATTS', colorHex: '#f97316' },
+  { id: 'EPA NEAR ROAD', name: 'EPA Near-Road Network', colorHex: '#facc15' },
+  { id: 'EPA CSN STN', name: 'EPA PM2.5 Chemical Speciation', colorHex: '#8b5cf6' },
+  { id: 'EPA NCORE', name: 'EPA NCore Multipollutant', colorHex: '#6366f1' }
 ]
 
 const totalPoints = computed(() => {

@@ -1,7 +1,7 @@
 <template>
   <div v-if="monitors.length" class="space-y-2">
     <div class="flex items-center gap-2">
-      <div class="h-3 w-3 rounded-full" :class="`bg-${network.color}-500`"></div>
+      <div class="h-3 w-3 rounded-full" :style="{ backgroundColor: network.colorHex }"></div>
       <h4 class="text-sm font-medium text-foreground">{{ network.name }}</h4>
       <span class="text-xs text-muted-foreground">({{ monitors.length }})</span>
     </div>
@@ -9,8 +9,7 @@
       <li v-for="monitor in monitors.slice(0, 5)" :key="monitor.id" class="list-none">
         <button
           type="button"
-          class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition"
-          :class="`hover:border-${network.hoverColor}-400 hover:bg-${network.hoverColor}-50 dark:hover:bg-${network.hoverColor}-950/20`"
+          class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-primary/40 hover:bg-accent/50"
           @click="$emit('focus-point', monitor.latitude, monitor.longitude)"
         >
           <div class="flex items-center justify-between gap-2">
