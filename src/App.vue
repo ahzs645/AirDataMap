@@ -12,13 +12,27 @@
           </p>
         </div>
       </div>
-      <div class="flex items-center gap-4">
-        <div class="hidden items-center gap-3 text-xs text-muted-foreground lg:flex">
+      <div class="flex flex-wrap items-center gap-4">
+        <div class="hidden items-center gap-3 text-xs text-muted-foreground 2xl:flex">
           <span v-if="summary.regionLabel" class="font-medium text-foreground">{{ summary.regionLabel }}</span>
           <span>Radius: {{ radiusKm.toFixed(0) }} km</span>
           <span v-if="summary.totals.points">Points: {{ summary.totals.points }}</span>
           <span v-if="summary.totals.satellite">Satellite: {{ summary.totals.satellite }}</span>
           <span v-if="summary.totals.grids">Grids: {{ summary.totals.grids }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="radius-input" class="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Radius (km)
+          </label>
+          <Input
+            id="radius-input"
+            v-model.number="radiusKm"
+            type="number"
+            min="1"
+            max="500"
+            step="1"
+            class="h-8 w-24 text-right [appearance:textfield] [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
         </div>
         <div class="flex items-center gap-2">
           <Button @click="toggleDarkMode" size="sm" variant="ghost">
@@ -263,6 +277,246 @@
                         </ul>
                         <p v-if="spartanMonitors.length > 5" class="text-xs text-muted-foreground">
                           + {{ spartanMonitors.length - 5 }} more SPARTAN monitors
+                        </p>
+                      </div>
+
+                      <!-- ASCENT Network Sites -->
+                      <div v-if="ascentMonitors.length" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                          <div class="h-3 w-3 rounded-full bg-cyan-500"></div>
+                          <h4 class="text-sm font-medium text-foreground">ASCENT Network</h4>
+                          <span class="text-xs text-muted-foreground">({{ ascentMonitors.length }})</span>
+                        </div>
+                        <ul class="space-y-2">
+                          <li v-for="monitor in ascentMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
+                            <button
+                              type="button"
+                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/20"
+                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
+                            >
+                              <div class="flex items-center justify-between gap-2">
+                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
+                                <Badge
+                                  v-if="monitor.siteType"
+                                  variant="secondary"
+                                  class="text-[10px] uppercase tracking-wide"
+                                >
+                                  {{ monitor.siteType.toUpperCase() }}
+                                </Badge>
+                              </div>
+                              <div class="flex flex-wrap gap-1.5">
+                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
+                                  {{ param }}
+                                </Badge>
+                              </div>
+                              <p v-if="monitor.comments" class="text-xs text-muted-foreground">
+                                {{ monitor.comments }}
+                              </p>
+                            </button>
+                          </li>
+                        </ul>
+                        <p v-if="ascentMonitors.length > 5" class="text-xs text-muted-foreground">
+                          + {{ ascentMonitors.length - 5 }} more ASCENT sites
+                        </p>
+                      </div>
+
+                      <!-- EPA IMPROVE -->
+                      <div v-if="improveMonitors.length" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                          <div class="h-3 w-3 rounded-full bg-teal-500"></div>
+                          <h4 class="text-sm font-medium text-foreground">EPA IMPROVE Network</h4>
+                          <span class="text-xs text-muted-foreground">({{ improveMonitors.length }})</span>
+                        </div>
+                        <ul class="space-y-2">
+                          <li v-for="monitor in improveMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
+                            <button
+                              type="button"
+                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/20"
+                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
+                            >
+                              <div class="flex items-center justify-between gap-2">
+                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
+                                <Badge
+                                  v-if="monitor.status === 'inactive'"
+                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
+                                  variant="outline"
+                                >
+                                  INACTIVE
+                                </Badge>
+                              </div>
+                              <div class="flex flex-wrap gap-1.5">
+                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
+                                  {{ param }}
+                                </Badge>
+                              </div>
+                              <p v-if="monitor.state || monitor.county" class="text-xs text-muted-foreground">
+                                {{ [monitor.county, monitor.state].filter(Boolean).join(', ') }}
+                              </p>
+                            </button>
+                          </li>
+                        </ul>
+                        <p v-if="improveMonitors.length > 5" class="text-xs text-muted-foreground">
+                          + {{ improveMonitors.length - 5 }} more IMPROVE sites
+                        </p>
+                      </div>
+
+                      <!-- EPA NATTS -->
+                      <div v-if="nattsMonitors.length" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                          <div class="h-3 w-3 rounded-full bg-orange-500"></div>
+                          <h4 class="text-sm font-medium text-foreground">EPA NATTS</h4>
+                          <span class="text-xs text-muted-foreground">({{ nattsMonitors.length }})</span>
+                        </div>
+                        <ul class="space-y-2">
+                          <li v-for="monitor in nattsMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
+                            <button
+                              type="button"
+                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/20"
+                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
+                            >
+                              <div class="flex items-center justify-between gap-2">
+                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
+                                <Badge
+                                  v-if="monitor.status === 'inactive'"
+                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
+                                  variant="outline"
+                                >
+                                  INACTIVE
+                                </Badge>
+                              </div>
+                              <div class="flex flex-wrap gap-1.5">
+                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
+                                  {{ param }}
+                                </Badge>
+                              </div>
+                              <p v-if="monitor.state || monitor.county" class="text-xs text-muted-foreground">
+                                {{ [monitor.county, monitor.state].filter(Boolean).join(', ') }}
+                              </p>
+                            </button>
+                          </li>
+                        </ul>
+                        <p v-if="nattsMonitors.length > 5" class="text-xs text-muted-foreground">
+                          + {{ nattsMonitors.length - 5 }} more NATTS sites
+                        </p>
+                      </div>
+
+                      <!-- EPA Near Road -->
+                      <div v-if="nearRoadMonitors.length" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                          <div class="h-3 w-3 rounded-full bg-yellow-400"></div>
+                          <h4 class="text-sm font-medium text-foreground">EPA Near-Road Network</h4>
+                          <span class="text-xs text-muted-foreground">({{ nearRoadMonitors.length }})</span>
+                        </div>
+                        <ul class="space-y-2">
+                          <li v-for="monitor in nearRoadMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
+                            <button
+                              type="button"
+                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-950/20"
+                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
+                            >
+                              <div class="flex items-center justify-between gap-2">
+                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
+                                <Badge
+                                  v-if="monitor.status === 'inactive'"
+                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
+                                  variant="outline"
+                                >
+                                  INACTIVE
+                                </Badge>
+                              </div>
+                              <div class="flex flex-wrap gap-1.5">
+                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
+                                  {{ param }}
+                                </Badge>
+                              </div>
+                              <p v-if="monitor.state || monitor.county" class="text-xs text-muted-foreground">
+                                {{ [monitor.county, monitor.state].filter(Boolean).join(', ') }}
+                              </p>
+                            </button>
+                          </li>
+                        </ul>
+                        <p v-if="nearRoadMonitors.length > 5" class="text-xs text-muted-foreground">
+                          + {{ nearRoadMonitors.length - 5 }} more near-road sites
+                        </p>
+                      </div>
+
+                      <!-- EPA CSN (PM2.5 Speciation) -->
+                      <div v-if="csnMonitors.length" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                          <div class="h-3 w-3 rounded-full bg-purple-500"></div>
+                          <h4 class="text-sm font-medium text-foreground">EPA PM2.5 Chemical Speciation</h4>
+                          <span class="text-xs text-muted-foreground">({{ csnMonitors.length }})</span>
+                        </div>
+                        <ul class="space-y-2">
+                          <li v-for="monitor in csnMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
+                            <button
+                              type="button"
+                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20"
+                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
+                            >
+                              <div class="flex items-center justify-between gap-2">
+                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
+                                <Badge
+                                  v-if="monitor.status === 'inactive'"
+                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
+                                  variant="outline"
+                                >
+                                  INACTIVE
+                                </Badge>
+                              </div>
+                              <div class="flex flex-wrap gap-1.5">
+                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
+                                  {{ param }}
+                                </Badge>
+                              </div>
+                              <p v-if="monitor.state || monitor.county" class="text-xs text-muted-foreground">
+                                {{ [monitor.county, monitor.state].filter(Boolean).join(', ') }}
+                              </p>
+                            </button>
+                          </li>
+                        </ul>
+                        <p v-if="csnMonitors.length > 5" class="text-xs text-muted-foreground">
+                          + {{ csnMonitors.length - 5 }} more CSN sites
+                        </p>
+                      </div>
+
+                      <!-- EPA NCore -->
+                      <div v-if="ncoreMonitors.length" class="space-y-2">
+                        <div class="flex items-center gap-2">
+                          <div class="h-3 w-3 rounded-full bg-indigo-500"></div>
+                          <h4 class="text-sm font-medium text-foreground">EPA NCore Multipollutant</h4>
+                          <span class="text-xs text-muted-foreground">({{ ncoreMonitors.length }})</span>
+                        </div>
+                        <ul class="space-y-2">
+                          <li v-for="monitor in ncoreMonitors.slice(0, 5)" :key="monitor.id" class="list-none">
+                            <button
+                              type="button"
+                              class="flex w-full flex-col gap-2 rounded-lg border border-transparent bg-card/40 p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
+                              @click="focusOnPoint(monitor.latitude, monitor.longitude)"
+                            >
+                              <div class="flex items-center justify-between gap-2">
+                                <div class="text-sm font-semibold text-foreground">{{ monitor.name }}</div>
+                                <Badge
+                                  v-if="monitor.status === 'inactive'"
+                                  class="border-destructive bg-destructive/15 text-[10px] uppercase tracking-wide text-destructive-foreground"
+                                  variant="outline"
+                                >
+                                  INACTIVE
+                                </Badge>
+                              </div>
+                              <div class="flex flex-wrap gap-1.5">
+                                <Badge v-for="param in monitor.parameters" :key="param" variant="outline" class="text-xs">
+                                  {{ param }}
+                                </Badge>
+                              </div>
+                              <p v-if="monitor.state || monitor.county" class="text-xs text-muted-foreground">
+                                {{ [monitor.county, monitor.state].filter(Boolean).join(', ') }}
+                              </p>
+                            </button>
+                          </li>
+                        </ul>
+                        <p v-if="ncoreMonitors.length > 5" class="text-xs text-muted-foreground">
+                          + {{ ncoreMonitors.length - 5 }} more NCore sites
                         </p>
                       </div>
                     </div>
@@ -635,6 +889,30 @@ const eggMonitors = computed(() => {
 
 const spartanMonitors = computed(() => {
   return pointMonitors.value.filter(m => m.network === 'SPARTAN')
+})
+
+const ascentMonitors = computed(() => {
+  return pointMonitors.value.filter(m => m.network === 'ASCENT')
+})
+
+const improveMonitors = computed(() => {
+  return pointMonitors.value.filter(m => m.network === 'EPA IMPROVE')
+})
+
+const nattsMonitors = computed(() => {
+  return pointMonitors.value.filter(m => m.network === 'EPA NATTS')
+})
+
+const ncoreMonitors = computed(() => {
+  return pointMonitors.value.filter(m => m.network === 'EPA NCORE')
+})
+
+const csnMonitors = computed(() => {
+  return pointMonitors.value.filter(m => m.network === 'EPA CSN STN')
+})
+
+const nearRoadMonitors = computed(() => {
+  return pointMonitors.value.filter(m => m.network === 'EPA NEAR ROAD')
 })
 
 function toggleCenterSelection() {

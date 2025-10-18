@@ -1,25 +1,44 @@
 {
-  "generatedAt": "2025-10-17T16:27:26.343Z",
-  "regions": [
-    "northeast",
-    "southeast",
-    "midwest",
-    "west",
-    "alaska"
-  ],
+  "generatedAt": "2025-10-18T01:22:29.451Z",
   "totals": {
-    "northeast": 3,
-    "southeast": 2,
-    "midwest": 2,
-    "west": 2,
-    "alaska": 1
+    "all": 3606,
+    "byRegion": {
+      "northeast": 727,
+      "southeast": 71,
+      "midwest": 314,
+      "west": 2238,
+      "alaska": 256
+    }
   },
-  "satelliteProducts": [
-    "MODIS-AOD-CONUS",
-    "GOES-16-AI"
-  ],
-  "hexProducts": [
-    "TROPOMI-NO2-NA",
-    "GEOS-CF-GLOBAL"
+  "sources": {
+    "monitors": {
+      "file": "public/data/monitors.csv",
+      "records": 3034
+    },
+    "spartan": {
+      "file": "public/data/spartan.csv",
+      "records": 39
+    },
+    "ascent": {
+      "file": "public/data/ascent-sites.json",
+      "records": 12
+    },
+    "epa": {
+      "directory": "public/data/epa",
+      "records": 524
+    }
+  },
+  "networks": [
+    "ASCENT",
+    "EGG",
+    "EPA CSN STN",
+    "EPA IMPROVE",
+    "EPA NATTS",
+    "EPA NCORE",
+    "EPA NEAR ROAD",
+    "EPA PAMS",
+    "FEM",
+    "PA",
+    "SPARTAN"
   ]
 }

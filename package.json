@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "generate:data": "node scripts/build_monitor_data.mjs"
+    "generate:data": "node scripts/build_monitor_data.mjs",
+    "fetch:aqs": "node scripts/fetch_epa_aqs.mjs"
   },
   "dependencies": {
     "@turf/turf": "^6.5.0",

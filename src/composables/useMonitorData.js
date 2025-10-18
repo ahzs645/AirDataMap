@@ -50,6 +50,109 @@ function h3CellToPolygon(cell) {
   return turf.polygon([coords], { cell })
 }
 
+function createMonitorParameters(value) {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean)
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(/[|,]/)
+      .map((param) => param.trim())
+      .filter(Boolean)
+  }
+  return []
+}
+
+function normalizeMonitorRecord(record) {
+  const id = record.id ?? record.sensor_index
+  const name = record.name ?? record.monitor ?? id
+  const network = record.network?.trim()
+
+  if (!id || !network) {
+    return null
+  }
+
+  const allowedNetworks = new Set([
+    'PA',
+    'FEM',
+    'EGG',
+    'SPARTAN',
+    'ASCENT',
+    'EPA IMPROVE Visibility Network',
+    'EPA National Air Toxics Trends Stations',
+    'EPA NCore Multipollutant Network'
+  ])
+
+  if (
+    !allowedNetworks.has(network) &&
+    !(typeof network === 'string' && network.startsWith('EPA '))
+  ) {
+    return null
+  }
+
+  const latitude =
+    typeof record.latitude === 'number'
+      ? record.latitude
+      : parseFloat(record.latitude ?? record.lat)
+  const longitude =
+    typeof record.longitude === 'number'
+      ? record.longitude
+      : parseFloat(record.longitude ?? record.lng)
+
+  if (
+    typeof latitude !== 'number' ||
+    typeof longitude !== 'number' ||
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude)
+  ) {
+    return null
+  }
+
+  const parameters = createMonitorParameters(record.parameters)
+  if (!parameters.length) {
+    parameters.push('PM2.5')
+  }
+
+  const statusRaw = typeof record.status === 'string' ? record.status.trim().toLowerCase() : null
+  let status = 'active'
+  if (statusRaw) {
+    if (['inactive', 'no', 'false', '0'].includes(statusRaw)) {
+      status = 'inactive'
+    } else if (['active', 'yes', 'true', '1'].includes(statusRaw)) {
+      status = 'active'
+    } else {
+      status = statusRaw
+    }
+  }
+
+  return {
+    id,
+    name,
+    network,
+    latitude,
+    longitude,
+    date: record.date ?? record.dateObserved ?? record.date_observed ?? null,
+    pm25_recent: record.pm25_recent ?? record.pm25Recent ?? null,
+    pm25_24hr: record.pm25_24hr ?? record.pm2524Hr ?? null,
+    temperature:
+      record.temperature ?? record.metadata?.temperature ?? record.temp ?? null,
+    humidity: record.humidity ?? record.metadata?.humidity ?? null,
+    pressure: record.pressure ?? record.metadata?.pressure ?? null,
+    parameters,
+    status,
+    siteType: record.siteType ?? null,
+    siteNumber: record.siteNumber ?? null,
+    aqsSiteId: record.aqsSiteId ?? null,
+    cbsa: record.cbsa ?? null,
+    address: record.address ?? null,
+    currentNetwork: record.currentNetwork ?? null,
+    instrumentMentor: record.instrumentMentor ?? null,
+    comments: record.comments ?? null,
+    source: record.source ?? null,
+    description: record.description ?? null
+  }
+}
+
 export function useMonitorData(centerRef, radiusKmRef, categoriesRef) {
   const loading = ref(false)
   const error = ref(null)
@@ -63,41 +166,29 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef) {
 
   async function loadCSVMonitors() {
     if (csvMonitorCache) return csvMonitorCache
+
+    // Prefer pre-generated JSON when available for static deployments
+    try {
+      const jsonData = await fetchJson('/data/monitors/all.json')
+      if (Array.isArray(jsonData)) {
+        const monitors = jsonData
+          .map(normalizeMonitorRecord)
+          .filter((record) => record !== null)
+        if (monitors.length) {
+          csvMonitorCache = monitors
+          return monitors
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load pre-generated monitor JSON. Falling back to CSV parsing.', err)
+    }
+
     const csvText = await fetchCSV('/data/monitors.csv')
     const parsedData = parseCSV(csvText)
 
-    // Convert to the expected format with only PA, FEM, and EGG monitors
     const monitors = parsedData
-      .filter(row => {
-        const network = row.network?.trim()
-        // Check that we have valid network type and coordinates
-        if (!(network === 'PA' || network === 'FEM' || network === 'EGG')) return false
-        if (!row.lat || !row.lng) return false
-
-        // Parse and validate coordinates
-        const lat = parseFloat(row.lat)
-        const lng = parseFloat(row.lng)
-
-        // Make sure coordinates are valid numbers
-        return !isNaN(lat) && !isNaN(lng) &&
-               lat >= -90 && lat <= 90 &&
-               lng >= -180 && lng <= 180
-      })
-      .map(row => ({
-        id: row.sensor_index,
-        name: row.monitor || row.sensor_index,
-        network: row.network.trim(),
-        latitude: parseFloat(row.lat),
-        longitude: parseFloat(row.lng),
-        date: row.date,
-        pm25_recent: row.pm25_recent || null,
-        pm25_24hr: row.pm25_24hr || null,
-        temperature: row.temperature || null,
-        humidity: row.rh || null,
-        pressure: row.pressure || null,
-        parameters: ['PM2.5'],
-        status: 'active'
-      }))
+      .map((row) => normalizeMonitorRecord(row))
+      .filter((record) => record !== null)
 
     csvMonitorCache = monitors
     return monitors
@@ -169,13 +260,34 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef) {
       try {
         const regionKey = determineRegionFromLatLon(center.lat, center.lon)
         state.monitorRegion = regionKey
-        // Load both CSV monitors and SPARTAN monitors
-        const [csvMonitors, spartanMonitors] = await Promise.all([
+        // Load region-specific datasets alongside CSV- and SPARTAN-based monitors
+        const [regionMonitors, csvMonitors, spartanMonitors] = await Promise.all([
+          loadRegion(regionKey),
           loadCSVMonitors(),
           loadSpartanMonitors()
         ])
-        // Merge both datasets
-        state.monitorRecords = [...csvMonitors, ...spartanMonitors]
+        // Merge datasets while avoiding duplicates (preferring explicit ids when available)
+        const combined = [
+          ...(Array.isArray(regionMonitors) ? regionMonitors : []),
+          ...csvMonitors,
+          ...spartanMonitors
+        ]
+
+        const seen = new Set()
+        const deduped = []
+        for (const record of combined) {
+          if (!record) continue
+          const { latitude, longitude } = record
+          if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+            continue
+          }
+          const key = record.id ?? `${latitude}:${longitude}:${record.network ?? 'unknown'}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          deduped.push(record)
+        }
+
+        state.monitorRecords = deduped
         state.satelliteProducts = await loadSatellite()
         state.hexProducts = await loadHexGrids()
       } catch (err) {

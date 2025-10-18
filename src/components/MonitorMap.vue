@@ -50,6 +50,9 @@ const emit = defineEmits(['update:center'])
 const mapRef = ref(null)
 let map = null
 let pendingStyleRefresh = null
+let radiusUpdateTimeout = null
+let layerUpdateScheduled = false
+let pendingLayerForce = false
 
 // Free vector map styles - no API keys needed!
 const BASE_STYLE_ID = 'osm-bright'
@@ -78,11 +81,23 @@ function buildPopupContent(feature) {
   if (props.network) {
     lines.push(`<div><small>${props.network}</small></div>`)
   }
-  if (props.parameters?.length) {
-    lines.push(`<div>${props.parameters.join(', ')}</div>`)
+
+  const parameterValues = Array.isArray(props.parameters)
+    ? props.parameters
+    : typeof props.parameters === 'string'
+      ? props.parameters
+          .split(/[|,]/)
+          .map(param => param.trim())
+          .filter(Boolean)
+      : []
+
+  if (parameterValues.length) {
+    lines.push(`<div>${parameterValues.join(', ')}</div>`)
   }
-  if (props.status) {
-    lines.push(`<div>Status: ${props.status}</div>`)
+  const statusValue = typeof props.status === 'string' ? props.status.trim().toLowerCase() : ''
+  if (statusValue && !['active', 'yes', 'true', '1'].includes(statusValue)) {
+    const label = statusValue === 'inactive' ? 'Inactive' : props.status
+    lines.push(`<div>Status: ${label}</div>`)
   }
   if (props.globalCoverage || props.coverage === 'global') {
     lines.push('<div>Coverage: Global</div>')
@@ -93,6 +108,15 @@ function buildPopupContent(feature) {
   if (props.frequency) {
     lines.push(`<div>Frequency: ${props.frequency}</div>`)
   }
+  if (props.siteType) {
+    lines.push(`<div>Site Type: ${props.siteType}</div>`)
+  }
+  if (props.instrumentMentor) {
+    lines.push(`<div>Mentor: ${props.instrumentMentor}</div>`)
+  }
+  if (props.comments) {
+    lines.push(`<div>${props.comments}</div>`)
+  }
   return lines.join('')
 }
 
@@ -100,11 +124,6 @@ function updateCircle() {
   if (!map) return
 
   console.log('updateCircle called')
-
-  if (!map.isStyleLoaded()) {
-    console.warn('updateCircle: style not loaded, skipping')
-    return
-  }
 
   const circleFeature = turf.circle([props.center.lon, props.center.lat], props.radiusKm, {
     steps: 64,
@@ -153,11 +172,6 @@ function updatePoints() {
   if (!map) return
 
   console.log('updatePoints called with', props.points.length, 'points')
-
-  if (!map.isStyleLoaded()) {
-    console.warn('updatePoints: style not loaded, skipping')
-    return
-  }
 
   // Filter out any points with invalid coordinates and create features
   const features = props.points
@@ -217,13 +231,24 @@ function updatePoints() {
     paint: {
       'circle-radius': 12,
       'circle-color': [
-        'match',
-        ['get', 'network'],
-        'PA', '#a855f7',
-        'FEM', '#22c55e',
-        'EGG', '#3b82f6',
-        'SPARTAN', '#f59e0b',
-        '#9ca3af'
+        'case',
+        ['==', ['downcase', ['coalesce', ['get', 'status'], 'active']], 'inactive'],
+        '#ef4444',
+        [
+          'match',
+          ['get', 'network'],
+          'PA', '#a855f7',
+          'FEM', '#22c55e',
+          'EGG', '#3b82f6',
+          'SPARTAN', '#f59e0b',
+          'ASCENT', '#0ea5e9',
+          'EPA IMPROVE', '#14b8a6',
+          'EPA NATTS', '#f97316',
+          'EPA NCORE', '#6366f1',
+          'EPA CSN STN', '#8b5cf6',
+          'EPA NEAR ROAD', '#facc15',
+          '#9ca3af'
+        ]
       ],
       'circle-opacity': 0.3,
       'circle-blur': 1
@@ -239,13 +264,24 @@ function updatePoints() {
       'circle-radius': 7,
       // Use data-driven styling based on network type
       'circle-color': [
-        'match',
-        ['get', 'network'],
-        'PA', '#a855f7',      // Purple for Purple Air
-        'FEM', '#22c55e',     // Green for FEM
-        'EGG', '#3b82f6',     // Blue for AQ Egg
-        'SPARTAN', '#f59e0b', // Amber/Orange for SPARTAN
-        '#9ca3af'             // Gray fallback
+        'case',
+        ['==', ['downcase', ['coalesce', ['get', 'status'], 'active']], 'inactive'],
+        '#ef4444',
+        [
+          'match',
+          ['get', 'network'],
+          'PA', '#a855f7',                        // Purple for Purple Air
+          'FEM', '#22c55e',                      // Green for FEM
+          'EGG', '#3b82f6',                      // Blue for AQ Egg
+          'SPARTAN', '#f59e0b',                  // Amber/Orange for SPARTAN
+          'ASCENT', '#0ea5e9',                   // Cyan for ASCENT
+          'EPA IMPROVE', '#14b8a6',              // Teal for IMPROVE
+          'EPA NATTS', '#f97316',                // Orange for NATTS
+          'EPA NCORE', '#6366f1',                // Indigo for NCore
+          'EPA CSN STN', '#8b5cf6',              // Purple for CSN speciation
+          'EPA NEAR ROAD', '#facc15',            // Yellow for near-road monitors
+          '#9ca3af'                              // Gray fallback
+        ]
       ],
       'circle-stroke-color': '#ffffff',  // White stroke for contrast in both modes
       'circle-stroke-width': 2,
@@ -255,12 +291,30 @@ function updatePoints() {
 
   // Add click handler for popups
   map.on('click', 'points-layer', (e) => {
-    const coordinates = e.features[0].geometry.coordinates.slice()
-    const description = buildPopupContent(e.features[0])
+    const allFeatures = map
+      .queryRenderedFeatures(e.point, { layers: ['points-layer'] })
+      .filter(Boolean)
+
+    const uniqueFeatures = []
+    const seen = new Set()
+    allFeatures.forEach(feature => {
+      const props = feature.properties || {}
+      const key = props.id ?? `${feature.geometry?.coordinates?.join(':')}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        uniqueFeatures.push(feature)
+      }
+    })
+
+    const description = uniqueFeatures
+      .map((feature) => `<div class="space-y-1">${buildPopupContent(feature)}</div>`)
+      .join('<hr class="my-2 border-muted/40" />')
+
+    const popupContent = `<div class="space-y-2">${description}</div>`
 
     new maplibregl.Popup()
-      .setLngLat(coordinates)
-      .setHTML(description)
+      .setLngLat(e.lngLat)
+      .setHTML(popupContent)
       .addTo(map)
   })
 
@@ -274,7 +328,7 @@ function updatePoints() {
 }
 
 function updateSatellite() {
-  if (!map || !map.isStyleLoaded()) return
+  if (!map) return
 
   const features = props.satelliteProducts.map(product => ({
     type: 'Feature',
@@ -343,7 +397,7 @@ function updateSatellite() {
 }
 
 function updateHex() {
-  if (!map || !map.isStyleLoaded()) return
+  if (!map) return
 
   const features = []
 
@@ -443,15 +497,15 @@ function updateAllLayers({ force = false } = {}) {
 
   console.log('updateAllLayers called, force:', force, 'styleLoaded:', map.isStyleLoaded())
 
-  if (!force && !map.isStyleLoaded()) {
-    console.log('Style not loaded, waiting...')
+  if (!map.isStyleLoaded()) {
     if (!pendingStyleRefresh) {
+      console.log('Style not loaded, waiting...')
       pendingStyleRefresh = () => {
         if (!map || !map.isStyleLoaded()) return
         map.off('styledata', pendingStyleRefresh)
         pendingStyleRefresh = null
         console.log('Style loaded via pending refresh, updating all layers')
-        updateAllLayers()
+        scheduleLayerUpdate({ force: true })
       }
       map.on('styledata', pendingStyleRefresh)
     }
@@ -468,6 +522,18 @@ function updateAllLayers({ force = false } = {}) {
   updatePoints()
   updateSatellite()
   updateHex()
+}
+
+function scheduleLayerUpdate({ force = false } = {}) {
+  pendingLayerForce = pendingLayerForce || force
+  if (layerUpdateScheduled) return
+  layerUpdateScheduled = true
+  requestAnimationFrame(() => {
+    layerUpdateScheduled = false
+    const forceUpdate = pendingLayerForce
+    pendingLayerForce = false
+    updateAllLayers({ force: forceUpdate })
+  })
 }
 
 function zoomToPoint(lat, lon) {
@@ -538,7 +604,7 @@ onMounted(() => {
   // Wait for style to load before adding layers
   map.on('load', () => {
     setBaseCursor()
-    updateAllLayers({ force: true })
+    scheduleLayerUpdate({ force: true })
   })
 })
 
@@ -549,6 +615,10 @@ onBeforeUnmount(() => {
   map?.remove()
   map = null
   pendingStyleRefresh = null
+  if (radiusUpdateTimeout) {
+    clearTimeout(radiusUpdateTimeout)
+    radiusUpdateTimeout = null
+  }
 })
 
 watch(
@@ -556,21 +626,27 @@ watch(
   (center) => {
     if (!map) return
     map.setCenter([center.lon, center.lat])
-    updateAllLayers()
+    scheduleLayerUpdate()
   }
 )
 
 watch(
   () => props.radiusKm,
   () => {
-    updateAllLayers()
+    if (radiusUpdateTimeout) {
+      clearTimeout(radiusUpdateTimeout)
+    }
+    radiusUpdateTimeout = setTimeout(() => {
+      radiusUpdateTimeout = null
+      scheduleLayerUpdate({ force: true })
+    }, 150)
   }
 )
 
 watch(
   () => props.points,
   () => {
-    updateAllLayers()
+    scheduleLayerUpdate()
   },
   { deep: true }
 )
@@ -578,7 +654,7 @@ watch(
 watch(
   () => props.satelliteProducts,
   () => {
-    updateAllLayers()
+    scheduleLayerUpdate()
   },
   { deep: true }
 )
@@ -586,7 +662,7 @@ watch(
 watch(
   () => props.hexProducts,
   () => {
-    updateAllLayers()
+    scheduleLayerUpdate()
   },
   { deep: true }
 )
