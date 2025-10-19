@@ -65,35 +65,33 @@
         />
       </div>
 
-      <!-- Heatmap Toggle (Desktop only) -->
-      <div v-if="!isMobile" class="flex items-center gap-2">
+      <div class="flex items-center gap-2">
+        <!-- Heatmap Toggle -->
         <Button
-          :variant="showHeatmap ? 'default' : 'outline'"
+          :variant="showHeatmap ? 'default' : 'ghost'"
           size="sm"
           @click="$emit('toggle-heatmap')"
-          class="h-8"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
+            width="24"
+            height="24"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
-            class="mr-1.5"
+            class="h-4 w-4"
+            :class="{ 'mr-1.5': !isMobile }"
           >
             <path d="M2 12h20"></path>
             <path d="M2 17h20"></path>
             <path d="M2 7h20"></path>
           </svg>
-          Heatmap
+          <span v-if="!isMobile">Heatmap</span>
         </Button>
-      </div>
 
-      <div class="flex items-center gap-2">
         <!-- Dark Mode Toggle -->
         <Button @click="$emit('toggle-dark-mode')" size="sm" variant="ghost">
           <svg

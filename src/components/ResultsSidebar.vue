@@ -49,18 +49,44 @@
                   <div class="space-y-2 text-sm">
                     <div class="flex items-center justify-between">
                       <span class="text-muted-foreground">Low-cost:</span>
-                      <span class="font-medium">{{ summary.density.lowCost.toFixed(2) }} sensors/km²</span>
+                      <span class="font-medium">
+                        <template v-if="summary.density.lowCostCount > 0">
+                          1 per {{ (1 / summary.density.lowCost).toFixed(1) }} km²
+                        </template>
+                        <template v-else>None</template>
+                      </span>
                     </div>
                     <div class="flex items-center justify-between">
                       <span class="text-muted-foreground">Other:</span>
-                      <span class="font-medium">{{ summary.density.other.toFixed(2) }} sensors/km²</span>
+                      <span class="font-medium">
+                        <template v-if="summary.density.otherCount > 0">
+                          1 per {{ (1 / summary.density.other).toFixed(1) }} km²
+                        </template>
+                        <template v-else>None</template>
+                      </span>
                     </div>
                     <div class="flex items-center justify-between border-t pt-2">
                       <span class="font-medium">Overall:</span>
-                      <span class="font-semibold">{{ summary.density.overall.toFixed(2) }} sensors/km²</span>
+                      <span class="font-semibold">
+                        <template v-if="summary.density.totalCount > 0">
+                          1 per {{ (1 / summary.density.overall).toFixed(1) }} km²
+                        </template>
+                        <template v-else>None</template>
+                      </span>
                     </div>
-                    <div class="text-xs text-muted-foreground">
-                      Area: {{ summary.density.areaKm2.toFixed(1) }} km²
+                    <div class="mt-3 space-y-1 text-xs text-muted-foreground">
+                      <div class="flex items-center justify-between">
+                        <span>Search area:</span>
+                        <span>{{ summary.density.areaKm2.toFixed(1) }} km²</span>
+                      </div>
+                      <div v-if="summary.density.actualCoverageKm2 > 0" class="flex items-center justify-between">
+                        <span>Actual coverage:</span>
+                        <span>{{ summary.density.actualCoverageKm2.toFixed(1) }} km² ({{ summary.density.coveragePercent.toFixed(1) }}%)</span>
+                      </div>
+                      <div class="flex items-center justify-between font-medium text-foreground">
+                        <span>Total sensors:</span>
+                        <span>{{ summary.density.totalCount }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

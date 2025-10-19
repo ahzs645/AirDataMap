@@ -443,13 +443,22 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRe
       // Count other sensors
       const otherCount = totalCount - lowCostCount
 
-      // Debug: Log to check network property
-      if (totalCount > 0) {
-        console.log('[Density Debug] Sample sensor:', pointMonitors.value[0])
-        console.log('[Density Debug] Total sensors:', totalCount)
-        console.log('[Density Debug] Low-cost count:', lowCostCount)
-        console.log('[Density Debug] Other count:', otherCount)
-        console.log('[Density Debug] Looking for networks:', Array.from(lowCostNetworks))
+      // Calculate actual coverage area using convex hull
+      let actualCoverageKm2 = 0
+      if (totalCount >= 3) {
+        // Need at least 3 points to form a polygon
+        try {
+          const points = turf.featureCollection(
+            pointMonitors.value.map(p => turf.point([p.longitude, p.latitude]))
+          )
+          const hull = turf.convex(points)
+          if (hull) {
+            // Calculate area in km²
+            actualCoverageKm2 = turf.area(hull) / 1000000 // Convert m² to km²
+          }
+        } catch (err) {
+          console.warn('Failed to calculate convex hull:', err)
+        }
       }
 
       // Calculate densities (sensors per km²)
@@ -457,7 +466,12 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRe
         lowCost: lowCostCount / areaKm2,
         other: otherCount / areaKm2,
         overall: totalCount / areaKm2,
-        areaKm2
+        areaKm2,
+        actualCoverageKm2,
+        coveragePercent: (actualCoverageKm2 / areaKm2) * 100,
+        totalCount,
+        lowCostCount,
+        otherCount
       }
     }
 
