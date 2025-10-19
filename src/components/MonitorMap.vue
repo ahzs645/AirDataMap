@@ -75,6 +75,118 @@ const mapStyles = [
   }
 ]
 
+const styleCache = new Map()
+const LARGE_RANK_FALLBACK = 1e9
+const SMALL_RANK_FALLBACK = -1
+
+function cloneStyleDefinition(definition) {
+  if (typeof definition === 'string') {
+    return definition
+  }
+  return JSON.parse(JSON.stringify(definition))
+}
+
+function isRankGetter(expression) {
+  return Array.isArray(expression) &&
+    expression.length >= 2 &&
+    expression[0] === 'get' &&
+    expression[1] === 'rank'
+}
+
+function isCoalescedRank(expression) {
+  return Array.isArray(expression) &&
+    expression[0] === 'coalesce' &&
+    expression.length >= 2 &&
+    isRankGetter(expression[1])
+}
+
+function wrapRankExpression(expression, fallback) {
+  if (isCoalescedRank(expression)) {
+    return expression
+  }
+  if (isRankGetter(expression)) {
+    return ['coalesce', expression, fallback]
+  }
+  return expression
+}
+
+function patchFilterNode(node) {
+  if (!Array.isArray(node)) {
+    return { node, changed: false }
+  }
+
+  const [operator, ...rawArgs] = node
+  let changed = false
+  const patchedArgs = rawArgs.map((arg) => {
+    const result = patchFilterNode(arg)
+    if (result.changed) {
+      changed = true
+    }
+    return result.node
+  })
+
+  const comparisonOperators = new Set(['>=', '>', '<=', '<', '==', '!='])
+  let finalArgs = patchedArgs
+
+  if (comparisonOperators.has(operator) && patchedArgs.length >= 2) {
+    const adjustedArgs = [...patchedArgs]
+    const left = patchedArgs[0]
+    const right = patchedArgs[1]
+
+    adjustedArgs[0] = wrapRankExpression(left, operator === '<' || operator === '<=' ? LARGE_RANK_FALLBACK : SMALL_RANK_FALLBACK)
+    adjustedArgs[1] = wrapRankExpression(right, operator === '<' || operator === '<=' ? LARGE_RANK_FALLBACK : SMALL_RANK_FALLBACK)
+
+    if (adjustedArgs[0] !== left || adjustedArgs[1] !== right) {
+      changed = true
+      finalArgs = adjustedArgs
+    }
+  }
+
+  if (changed || finalArgs.some((arg, index) => arg !== rawArgs[index])) {
+    return { node: [operator, ...finalArgs], changed: true }
+  }
+
+  return { node, changed: false }
+}
+
+function patchStyleDefinition(style) {
+  if (!style || !Array.isArray(style.layers)) {
+    return style
+  }
+
+  const layers = style.layers.map((layer) => {
+    if (!layer?.filter) return layer
+    const patchedFilter = patchFilterNode(layer.filter)
+    if (!patchedFilter.changed) return layer
+    return { ...layer, filter: patchedFilter.node }
+  })
+
+  return { ...style, layers }
+}
+
+async function fetchPatchedStyle(styleId = BASE_STYLE_ID) {
+  const styleUrl = getStyleUrl(styleId)
+
+  if (styleCache.has(styleUrl)) {
+    return cloneStyleDefinition(styleCache.get(styleUrl))
+  }
+
+  try {
+    const response = await fetch(styleUrl)
+    if (!response.ok) {
+      throw new Error(`Failed to load style definition at ${styleUrl}: ${response.status}`)
+    }
+    const styleJson = await response.json()
+    const patchedStyle = patchStyleDefinition(styleJson)
+    styleCache.set(styleUrl, patchedStyle)
+    return cloneStyleDefinition(patchedStyle)
+  } catch (error) {
+    console.warn('Failed to fetch style JSON; falling back to remote URL.', error)
+    styleCache.set(styleUrl, styleUrl)
+    return styleUrl
+  }
+}
+
 function getStyleUrl(styleId = BASE_STYLE_ID) {
   const style = mapStyles.find(s => s.id === styleId) ?? mapStyles[0]
   if (!style) return 'https://tiles.openfreemap.org/styles/bright'
@@ -137,7 +249,7 @@ function zoomToPoint(lat, lon) {
   })
 }
 
-function switchMapStyle(styleId = BASE_STYLE_ID) {
+async function switchMapStyle(styleId = BASE_STYLE_ID) {
   if (!map || !styleId) return
 
   const currentView = {
@@ -147,8 +259,8 @@ function switchMapStyle(styleId = BASE_STYLE_ID) {
     pitch: map.getPitch()
   }
 
-  const styleUrl = getStyleUrl(styleId)
-  map.setStyle(styleUrl)
+  const styleDefinition = await fetchPatchedStyle(styleId)
+  map.setStyle(styleDefinition)
 
   // Use 'styledata' event to catch when the style is loaded but before first render
   // This reduces the flash when switching themes
@@ -177,10 +289,12 @@ defineExpose({
   zoomToPoint
 })
 
-onMounted(() => {
+onMounted(async () => {
+  const initialStyle = await fetchPatchedStyle()
+
   map = new maplibregl.Map({
     container: mapRef.value,
-    style: getStyleUrl(),
+    style: initialStyle,
     center: [props.center.lon, props.center.lat],
     zoom: 10
   })
