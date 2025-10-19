@@ -32,8 +32,70 @@
             </ScrollArea>
           </template>
 
-          <!-- Radius Mode Results -->
+          <!-- Boundary Mode Results -->
           <template v-else>
+            <!-- Boundary Type Selector (Radius vs Regions) -->
+            <div class="border-b bg-muted/30 px-6 py-3">
+              <div class="flex items-center gap-2 rounded-md border bg-background p-1">
+                <button
+                  @click="$emit('update:boundaryType', 'radius')"
+                  class="flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors"
+                  :class="boundaryType === 'radius' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'"
+                >
+                  Radius
+                </button>
+                <button
+                  @click="$emit('update:boundaryType', 'region')"
+                  class="flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors"
+                  :class="boundaryType === 'region' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'"
+                >
+                  Regions
+                </button>
+              </div>
+            </div>
+
+            <!-- Region Selector Button (when in region mode) -->
+            <div v-if="boundaryType === 'region'" class="border-b px-6 py-4">
+              <div v-if="!selectedRegionCode" class="mb-3 space-y-1">
+                <p class="text-sm font-medium">Select a Region</p>
+                <p class="text-xs text-muted-foreground">
+                  Choose an administrative boundary to analyze
+                </p>
+              </div>
+              <Button
+                @click="showRegionDialog = true"
+                :variant="selectedRegionCode ? 'outline' : 'default'"
+                :disabled="boundaryLoading"
+                class="w-full"
+              >
+                <svg
+                  v-if="!boundaryLoading"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="mr-2"
+                >
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <span v-if="boundaryLoading" class="mr-2">⏳</span>
+                {{ boundaryLoading ? 'Loading boundary...' : selectedRegionCode ? 'Change Region' : 'Browse Regions' }}
+              </Button>
+
+              <!-- Show selected region info -->
+              <div v-if="selectedRegionCode && selectedRegionInfo" class="mt-3 rounded-md bg-muted/50 p-3">
+                <div class="text-xs font-medium text-muted-foreground">Selected Region</div>
+                <div class="mt-1 text-sm font-semibold">{{ selectedRegionInfo.name }}</div>
+                <div class="text-xs text-muted-foreground">{{ selectedRegionInfo.levelLabel }}</div>
+              </div>
+            </div>
+
             <div class="flex h-full flex-col">
               <div v-if="error" class="px-6 py-5 text-sm text-destructive">
                 <p class="font-medium">Unable to load datasets.</p>
@@ -99,10 +161,39 @@
         </CardContent>
       </Card>
     </div>
+
+    <!-- Region Selection Dialog -->
+    <Dialog v-model="showRegionDialog">
+      <div class="space-y-4">
+        <header class="space-y-2">
+          <h2 class="text-2xl font-semibold tracking-tight">Select Region</h2>
+          <p class="text-sm text-muted-foreground">
+            Browse or search for an administrative boundary to analyze.
+          </p>
+        </header>
+
+        <Separator />
+
+        <RegionSelector
+          v-if="boundaryIndex"
+          :region-source="regionSource"
+          :index="boundaryIndex"
+          :selected-level="selectedRegionLevel"
+          :selected-code="selectedRegionCode"
+          :search-boundaries="searchBoundaries"
+          :get-child-boundaries="getChildBoundaries"
+          @update:selection="handleRegionSelection"
+        />
+        <div v-else class="py-8 text-center text-sm text-muted-foreground">
+          Loading regions...
+        </div>
+      </div>
+    </Dialog>
   </aside>
 </template>
 
 <script setup>
+import { ref, computed } from 'vue'
 import Card from './ui/card/Card.vue'
 import CardHeader from './ui/card/CardHeader.vue'
 import CardContent from './ui/card/CardContent.vue'
@@ -110,9 +201,12 @@ import CardTitle from './ui/card/CardTitle.vue'
 import CardDescription from './ui/card/CardDescription.vue'
 import ScrollArea from './ui/scroll-area/ScrollArea.vue'
 import Separator from './ui/separator/Separator.vue'
+import Button from './ui/button/Button.vue'
+import Dialog from './ui/dialog/Dialog.vue'
 import NetworkSelector from './NetworkSelector.vue'
+import RegionSelector from './RegionSelector.vue'
 
-defineProps({
+const props = defineProps({
   viewMode: {
     type: String,
     required: true
@@ -140,8 +234,84 @@ defineProps({
   error: {
     type: Object,
     default: null
+  },
+  // Boundary/Region props
+  boundaryType: {
+    type: String,
+    default: 'radius'
+  },
+  regionSource: {
+    type: String,
+    default: 'bcHealth'
+  },
+  selectedRegionLevel: {
+    type: String,
+    default: null
+  },
+  selectedRegionCode: {
+    type: String,
+    default: null
+  },
+  boundaryIndex: {
+    type: Object,
+    default: null
+  },
+  boundaryLoading: {
+    type: Boolean,
+    default: false
+  },
+  searchBoundaries: {
+    type: Function,
+    default: () => []
+  },
+  getChildBoundaries: {
+    type: Function,
+    default: () => []
   }
 })
 
-defineEmits(['update:selectedNetworks'])
+const emit = defineEmits(['update:selectedNetworks', 'update:boundaryType', 'update:regionSelection'])
+
+const showRegionDialog = ref(false)
+
+// Compute selected region info for display
+const selectedRegionInfo = computed(() => {
+  if (!props.selectedRegionCode || !props.boundaryIndex) return null
+
+  const levelLabels = {
+    'healthAuthority': 'Health Authority',
+    'hsda': 'Health Service Delivery Area',
+    'lha': 'Local Health Area',
+    'chsa': 'Community Health Service Area'
+  }
+
+  // Find the region in the index
+  const indexKeys = {
+    'healthAuthority': 'healthAuthorities',
+    'hsda': 'healthServiceDeliveryAreas',
+    'lha': 'localHealthAreas',
+    'chsa': 'communityHealthServiceAreas'
+  }
+
+  const indexKey = indexKeys[props.selectedRegionLevel]
+  if (!indexKey) return null
+
+  const regions = props.boundaryIndex[indexKey] || []
+  const region = regions.find(r => r.code === props.selectedRegionCode)
+
+  if (!region) return null
+
+  return {
+    name: region.name,
+    code: region.code,
+    levelLabel: levelLabels[props.selectedRegionLevel] || props.selectedRegionLevel
+  }
+})
+
+function handleRegionSelection(selection) {
+  emit('update:regionSelection', selection)
+  if (selection && selection.code) {
+    showRegionDialog.value = false
+  }
+}
 </script>

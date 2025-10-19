@@ -28,7 +28,17 @@
         :network-counts="networkCounts"
         :loading="loading"
         :error="error"
+        :boundary-type="boundaryType"
+        :region-source="selectedRegionSource"
+        :selected-region-level="selectedRegionLevel"
+        :selected-region-code="selectedRegionCode"
+        :boundary-index="index"
+        :boundary-loading="boundaryLoading"
+        :search-boundaries="searchBoundaries"
+        :get-child-boundaries="getChildBoundaries"
         @update:selected-networks="handleNetworkUpdate"
+        @update:boundary-type="boundaryType = $event"
+        @update:region-selection="handleRegionSelection"
       >
         <template #results>
           <ResultsList
@@ -56,6 +66,10 @@
           :center-selection-enabled="centerSelectionActive"
           :is-dark-mode="isDark"
           :view-mode="viewMode"
+          :boundary-type="boundaryType"
+          :boundary-source="selectedRegionSource"
+          :selected-boundary-id="selectedRegionCode"
+          :boundary-polygon="boundaryPolygon"
           :show-heatmap="showHeatmap"
           @update:center="handleMapCenterUpdate"
         />
@@ -275,6 +289,7 @@ import { useMonitorData } from './composables/useMonitorData'
 import { useDarkMode } from './composables/useDarkMode'
 import { useVisibleItems } from './composables/useVisibleItems'
 import { useGeocoding } from './composables/useGeocoding'
+import { useBoundaryData } from './composables/useBoundaryData'
 
 const { isDark, toggleDarkMode } = useDarkMode()
 
@@ -299,13 +314,20 @@ const categories = reactive({
   grids: true
 })
 
-// View mode: 'radius' or 'network'
+// View mode: 'boundary' or 'network'
 // Mobile devices default to network mode
 const isMobile = ref(window.innerWidth < 1024)
-const viewMode = ref(isMobile.value ? 'network' : 'radius')
+const viewMode = ref(isMobile.value ? 'network' : 'boundary')
 const selectedNetworks = reactive(new Set(['PA', 'FEM', 'EGG']))
 const showMobileNetworkDrawer = ref(false)
 const showHeatmap = ref(false)
+
+// Boundary sub-mode: 'radius' or 'region'
+const boundaryType = ref('radius')
+// For 'region' mode - currently supports BC Health boundaries, extendable for other region types
+const selectedRegionSource = ref('bcHealth') // Future: 'usStates', 'counties', etc.
+const selectedRegionLevel = ref('lha') // For bcHealth: 'healthAuthority', 'hsda', 'lha', 'chsa'
+const selectedRegionCode = ref(null)
 
 // Update mobile detection on window resize
 if (typeof window !== 'undefined') {
@@ -330,17 +352,36 @@ const categoriesRef = computed(() => categories)
 const viewModeRef = computed(() => viewMode.value)
 const selectedNetworksRef = computed(() => new Set(selectedNetworks))
 
+const boundaryTypeRef = computed(() => boundaryType.value)
+
+// Use composables for visible items, geocoding, and boundaries
+// Initialize useBoundaryData first so boundaryPolygon is available for useMonitorData
+const {
+  loading: boundaryLoading,
+  index,
+  loadIndex,
+  selectBoundary,
+  searchBoundaries,
+  getChildBoundaries,
+  getBoundariesByLevel,
+  boundaryPolygon
+} = useBoundaryData()
+
 const { loading, error, pointMonitors, satelliteMatches, hexMatches, summary } = useMonitorData(
   center,
   radiusKm,
   categoriesRef,
   viewModeRef,
-  selectedNetworksRef
+  selectedNetworksRef,
+  boundaryTypeRef,
+  boundaryPolygon
 )
 
-// Use composables for visible items and geocoding
 const { visibleItems, toggleSatelliteVisibility, toggleHexVisibility, visibleSatelliteProducts, visibleHexProducts } = useVisibleItems(satelliteMatches, hexMatches)
 const { searchQuery, searching, searchError, searchAddress } = useGeocoding(center)
+
+// Load boundary index on mount
+loadIndex()
 
 // Group monitors by network type
 const monitorsByNetwork = computed(() => {
@@ -380,6 +421,24 @@ const networkCounts = computed(() => {
 function handleNetworkUpdate(newSet) {
   selectedNetworks.clear()
   newSet.forEach(network => selectedNetworks.add(network))
+}
+
+function handleRegionSelection(selection) {
+  if (!selection || !selection.code) {
+    selectedRegionLevel.value = null
+    selectedRegionCode.value = null
+    selectBoundary(null, null)
+    return
+  }
+
+  selectedRegionLevel.value = selection.level
+  selectedRegionCode.value = selection.code
+
+  // Automatically switch to region boundary type when a region is selected
+  boundaryType.value = 'region'
+
+  // Load the boundary geometry
+  selectBoundary(selection.level, selection.code)
 }
 
 function toggleCenterSelection() {

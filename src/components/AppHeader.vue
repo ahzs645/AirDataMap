@@ -21,7 +21,7 @@
       <!-- Desktop Summary -->
       <div class="hidden items-center gap-3 text-xs text-muted-foreground lg:flex 2xl:flex">
         <span v-if="summary.regionLabel" class="font-medium text-foreground">{{ summary.regionLabel }}</span>
-        <span v-if="viewMode === 'radius'">Radius: {{ radiusKm.toFixed(0) }} km</span>
+        <span v-if="viewMode === 'boundary'">Radius: {{ radiusKm.toFixed(0) }} km</span>
         <span v-if="viewMode === 'network'">Networks: {{ selectedNetworkCount }}</span>
         <span v-if="summary.totals.points">Points: {{ summary.totals.points }}</span>
         <span v-if="summary.totals.satellite">Satellite: {{ summary.totals.satellite }}</span>
@@ -31,12 +31,12 @@
       <!-- Mode Switcher (Desktop only) -->
       <div v-if="!isMobile" class="flex items-center gap-2 rounded-md border bg-muted p-1">
         <Button
-          :variant="viewMode === 'radius' ? 'default' : 'ghost'"
+          :variant="viewMode === 'boundary' ? 'default' : 'ghost'"
           size="sm"
           class="h-7"
-          @click="$emit('update:viewMode', 'radius')"
+          @click="$emit('update:viewMode', 'boundary')"
         >
-          Radius
+          Boundary
         </Button>
         <Button
           :variant="viewMode === 'network' ? 'default' : 'ghost'"
@@ -48,8 +48,8 @@
         </Button>
       </div>
 
-      <!-- Radius Input (Desktop, Radius Mode only) -->
-      <div v-if="!isMobile && viewMode === 'radius'" class="flex items-center gap-2">
+      <!-- Radius Input (Desktop, Boundary Mode only) -->
+      <div v-if="!isMobile && viewMode === 'boundary'" class="flex items-center gap-2">
         <label for="radius-input" class="text-[11px] uppercase tracking-wide text-muted-foreground">
           Radius (km)
         </label>
@@ -134,9 +134,9 @@
           </svg>
         </Button>
 
-        <!-- Move Radius Button (Desktop, Radius Mode only) -->
+        <!-- Move Center Button (Desktop, Boundary Mode only) -->
         <Button
-          v-if="!isMobile && viewMode === 'radius'"
+          v-if="!isMobile && viewMode === 'boundary'"
           :aria-pressed="centerSelectionActive"
           :variant="centerSelectionActive ? 'default' : 'outline'"
           size="sm"

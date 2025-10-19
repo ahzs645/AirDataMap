@@ -1,6 +1,6 @@
 import * as turf from '@turf/turf'
 
-export function updateCircle(map, center, radiusKm, viewMode) {
+export function updateCircle(map, center, radiusKm, viewMode, boundaryType) {
   if (!map) return
 
   // Remove existing layers and source if they exist
@@ -14,8 +14,8 @@ export function updateCircle(map, center, radiusKm, viewMode) {
     map.removeSource('search-circle')
   }
 
-  // Only show circle in radius mode
-  if (viewMode !== 'radius') {
+  // Only show circle in boundary mode with radius sub-mode
+  if (viewMode !== 'boundary' || boundaryType !== 'radius') {
     return
   }
 

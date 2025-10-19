@@ -15,16 +15,17 @@
     "h3-js": "^4.1.0",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^5.9.0",
+    "pmtiles": "^4.3.0",
     "topojson-client": "^3.1.0",
     "vue": "^3.4.21"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",
     "autoprefixer": "^10.4.17",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1",
-    "tailwind-merge": "^2.2.1",
     "class-variance-authority": "^0.7.0",
+    "postcss": "^8.4.35",
+    "tailwind-merge": "^2.2.1",
+    "tailwindcss": "^3.4.1",
     "vite": "^5.1.4"
   }
 }

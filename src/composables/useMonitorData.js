@@ -158,7 +158,7 @@ function normalizeMonitorRecord(record) {
   }
 }
 
-export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRef, selectedNetworksRef) {
+export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRef, selectedNetworksRef, boundaryTypeRef, boundaryPolygonRef) {
   const loading = ref(false)
   const error = ref(null)
 
@@ -314,6 +314,18 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRe
     })
   })
 
+  // Use boundary polygon when in region mode, otherwise use search circle
+  const searchArea = computed(() => {
+    const boundaryType = boundaryTypeRef?.value
+    const boundaryPolygon = boundaryPolygonRef?.value
+
+    if (boundaryType === 'region' && boundaryPolygon) {
+      return boundaryPolygon
+    }
+
+    return searchCircle.value
+  })
+
   const pointMonitors = computed(() => {
     const { monitorRecords } = state
     if (!Array.isArray(monitorRecords)) return []
@@ -340,16 +352,16 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRe
         return true
       })
       .map((record) => {
-        // Radius filtering mode
-        if (viewMode === 'radius' || !viewMode) {
+        // Boundary filtering mode (using radius or custom boundary)
+        if (viewMode === 'boundary' || !viewMode) {
           const point = turf.point([record.longitude, record.latitude])
-          const inside = turf.booleanPointInPolygon(point, searchCircle.value)
+          const inside = turf.booleanPointInPolygon(point, searchArea.value)
           return {
             ...record,
             inside
           }
         }
-        // Network mode - no radius check
+        // Network mode - no boundary check
         return {
           ...record,
           inside: true
@@ -365,7 +377,7 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRe
     return state.satelliteProducts
       .map((product) => {
         const polygon = turf.polygon(product.geometry.coordinates)
-        const intersects = turf.booleanIntersects(polygon, searchCircle.value)
+        const intersects = turf.booleanIntersects(polygon, searchArea.value)
         return {
           ...product,
           intersects
@@ -378,7 +390,7 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRe
     if (!categoriesRef.value.grids) return []
     if (!Array.isArray(state.hexProducts)) return []
 
-    const circle = searchCircle.value
+    const area = searchArea.value
 
     return state.hexProducts
       .map((grid) => {
@@ -397,13 +409,13 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRe
         }
 
         const geometryIntersects = geometryFeature
-          ? turf.booleanIntersects(geometryFeature, circle)
+          ? turf.booleanIntersects(geometryFeature, area)
           : false
 
         const intersectingCells = cells.filter((cell) => {
           try {
             const polygon = h3CellToPolygon(cell)
-            return turf.booleanIntersects(polygon, circle)
+            return turf.booleanIntersects(polygon, area)
           } catch (err) {
             console.warn('Failed to build polygon for cell', cell, err)
             return false
@@ -426,12 +438,21 @@ export function useMonitorData(centerRef, radiusKmRef, categoriesRef, viewModeRe
   const summary = computed(() => {
     const viewMode = viewModeRef?.value
     const radius = radiusKmRef.value
+    const boundaryType = boundaryTypeRef?.value
+    const boundaryPolygon = boundaryPolygonRef?.value
 
-    // Calculate sensor density for radius mode
+    // Calculate sensor density for boundary mode
     let density = null
-    if (viewMode === 'radius') {
-      // Calculate area of circle in km²: π * r²
-      const areaKm2 = Math.PI * radius * radius
+    if (viewMode === 'boundary') {
+      // Calculate area based on boundary type
+      let areaKm2
+      if (boundaryType === 'region' && boundaryPolygon) {
+        // Use boundary polygon area (convert from m² to km²)
+        areaKm2 = turf.area(boundaryPolygon) / 1000000
+      } else {
+        // Calculate area of circle in km²: π * r²
+        areaKm2 = Math.PI * radius * radius
+      }
 
       // Total count
       const totalCount = pointMonitors.value.length

@@ -9,6 +9,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { updateCircle } from '../utils/layers/circleLayer.js'
+import { updateBoundaryLayer } from '../utils/layers/boundaryLayer.js'
 import { updatePoints } from '../utils/layers/pointsLayer.js'
 import { updateSatellite } from '../utils/layers/satelliteLayer.js'
 import { updateHex } from '../utils/layers/hexLayer.js'
@@ -50,6 +51,22 @@ const props = defineProps({
     type: String,
     default: 'radius'
   },
+  boundaryType: {
+    type: String,
+    default: 'radius'
+  },
+  boundarySource: {
+    type: String,
+    default: 'bcHealth' // Future: 'municipalities', 'counties', etc.
+  },
+  selectedBoundaryId: {
+    type: String,
+    default: null
+  },
+  boundaryPolygon: {
+    type: Object,
+    default: null
+  },
   showHeatmap: {
     type: Boolean,
     default: false
@@ -76,8 +93,20 @@ const mapStyles = [
 ]
 
 const styleCache = new Map()
-const LARGE_RANK_FALLBACK = 1e9
-const SMALL_RANK_FALLBACK = -1
+const LARGE_POSITIVE_FALLBACK = 1e9
+const LARGE_NEGATIVE_FALLBACK = -1e9
+const EQUALITY_FALLBACK = Number.MAX_SAFE_INTEGER
+const NUMERIC_FILTER_PROPERTIES = new Set([
+  'rank',
+  'ref_length',
+  'intermittent',
+  'ramp',
+  'oneway',
+  'capital',
+  'maritime',
+  'admin_level',
+  'disputed'
+])
 
 function cloneStyleDefinition(definition) {
   if (typeof definition === 'string') {
@@ -86,28 +115,38 @@ function cloneStyleDefinition(definition) {
   return JSON.parse(JSON.stringify(definition))
 }
 
-function isRankGetter(expression) {
+function isNumericGetter(expression) {
   return Array.isArray(expression) &&
     expression.length >= 2 &&
     expression[0] === 'get' &&
-    expression[1] === 'rank'
+    NUMERIC_FILTER_PROPERTIES.has(expression[1])
 }
 
-function isCoalescedRank(expression) {
+function isCoalescedNumeric(expression) {
   return Array.isArray(expression) &&
     expression[0] === 'coalesce' &&
     expression.length >= 2 &&
-    isRankGetter(expression[1])
+    isNumericGetter(expression[1])
 }
 
-function wrapRankExpression(expression, fallback) {
-  if (isCoalescedRank(expression)) {
+function wrapNumericExpression(expression, fallback) {
+  if (isCoalescedNumeric(expression)) {
     return expression
   }
-  if (isRankGetter(expression)) {
+  if (isNumericGetter(expression)) {
     return ['coalesce', expression, fallback]
   }
   return expression
+}
+
+function getFallbackForOperator(operator) {
+  if (operator === '<' || operator === '<=') {
+    return LARGE_POSITIVE_FALLBACK
+  }
+  if (operator === '>' || operator === '>=') {
+    return LARGE_NEGATIVE_FALLBACK
+  }
+  return EQUALITY_FALLBACK
 }
 
 function patchFilterNode(node) {
@@ -130,16 +169,25 @@ function patchFilterNode(node) {
 
   if (comparisonOperators.has(operator) && patchedArgs.length >= 2) {
     const adjustedArgs = [...patchedArgs]
+    const fallback = getFallbackForOperator(operator)
+
     const left = patchedArgs[0]
     const right = patchedArgs[1]
 
-    adjustedArgs[0] = wrapRankExpression(left, operator === '<' || operator === '<=' ? LARGE_RANK_FALLBACK : SMALL_RANK_FALLBACK)
-    adjustedArgs[1] = wrapRankExpression(right, operator === '<' || operator === '<=' ? LARGE_RANK_FALLBACK : SMALL_RANK_FALLBACK)
+    const wrappedLeft = wrapNumericExpression(left, fallback)
+    const wrappedRight = wrapNumericExpression(right, fallback)
 
-    if (adjustedArgs[0] !== left || adjustedArgs[1] !== right) {
+    if (wrappedLeft !== left) {
+      adjustedArgs[0] = wrappedLeft
       changed = true
-      finalArgs = adjustedArgs
     }
+
+    if (wrappedRight !== right) {
+      adjustedArgs[1] = wrappedRight
+      changed = true
+    }
+
+    finalArgs = adjustedArgs
   }
 
   if (changed || finalArgs.some((arg, index) => arg !== rawArgs[index])) {
@@ -224,7 +272,8 @@ function updateAllLayers() {
 
   bypassStyleCheck = false
 
-  updateCircle(map, props.center, props.radiusKm, props.viewMode)
+  updateCircle(map, props.center, props.radiusKm, props.viewMode, props.boundaryType)
+  updateBoundaryLayer(map, props.boundarySource, props.selectedBoundaryId, props.viewMode, props.boundaryType)
   updatePoints(map, props.points, setBaseCursor, props.showHeatmap)
   updateHeatmap(map, props.points, props.showHeatmap)
   updateSatellite(map, props.satelliteProducts, setBaseCursor)
@@ -412,6 +461,34 @@ watch(
   () => props.showHeatmap,
   () => {
     // Update heatmap layer when toggle changes
+    scheduleLayerUpdate()
+  }
+)
+
+watch(
+  () => props.boundaryType,
+  async () => {
+    // Wait for next tick to ensure computed properties have updated
+    await nextTick()
+    scheduleLayerUpdate()
+  }
+)
+
+watch(
+  () => props.boundaryPolygon,
+  async () => {
+    // Wait for next tick to ensure the boundary polygon has been loaded
+    await nextTick()
+    scheduleLayerUpdate()
+  },
+  { deep: true }
+)
+
+watch(
+  () => props.selectedBoundaryId,
+  async () => {
+    // When selected boundary changes, update the map layers
+    await nextTick()
     scheduleLayerUpdate()
   }
 )
