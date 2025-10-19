@@ -26,10 +26,10 @@ async function loadBoundaryGeometry(level, code) {
   }
 
   const levelFiles = {
-    'healthAuthority': 'health_authorities.json',
-    'hsda': 'health_service_delivery_areas.json',
-    'lha': 'local_health_areas.json',
-    'chsa': 'community_health_service_areas.json'
+    'healthAuthority': 'simplified/health_authorities.json',
+    'hsda': 'simplified/health_service_delivery_areas.json',
+    'lha': 'simplified/local_health_areas.json',
+    'chsa': 'simplified/community_health_service_areas.json'
   }
 
   const levelProps = {

@@ -69,6 +69,7 @@
           :boundary-type="boundaryType"
           :boundary-source="selectedRegionSource"
           :selected-boundary-id="selectedRegionCode"
+          :selected-boundary-level="selectedRegionLevel"
           :boundary-polygon="boundaryPolygon"
           :show-heatmap="showHeatmap"
           @update:center="handleMapCenterUpdate"

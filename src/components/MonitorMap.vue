@@ -63,6 +63,10 @@ const props = defineProps({
     type: String,
     default: null
   },
+  selectedBoundaryLevel: {
+    type: String,
+    default: null
+  },
   boundaryPolygon: {
     type: Object,
     default: null
@@ -247,7 +251,7 @@ function setBaseCursor() {
 }
 
 
-function updateAllLayers() {
+async function updateAllLayers() {
   if (!map) {
     return
   }
@@ -273,7 +277,7 @@ function updateAllLayers() {
   bypassStyleCheck = false
 
   updateCircle(map, props.center, props.radiusKm, props.viewMode, props.boundaryType)
-  updateBoundaryLayer(map, props.boundarySource, props.selectedBoundaryId, props.viewMode, props.boundaryType)
+  await updateBoundaryLayer(map, props.boundarySource, props.selectedBoundaryId, props.selectedBoundaryLevel, props.viewMode, props.boundaryType)
   updatePoints(map, props.points, setBaseCursor, props.showHeatmap)
   updateHeatmap(map, props.points, props.showHeatmap)
   updateSatellite(map, props.satelliteProducts, setBaseCursor)

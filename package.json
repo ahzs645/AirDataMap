@@ -15,7 +15,6 @@
     "h3-js": "^4.1.0",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^5.9.0",
-    "pmtiles": "^4.3.0",
     "topojson-client": "^3.1.0",
     "vue": "^3.4.21"
   },
